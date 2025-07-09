@@ -1,0 +1,508 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id      Int @id @default(autoincrement())
+  role_id Int
+
+  nama     String
+  email    String
+  password String
+  nomor_hp String
+  gender   String @default("Laki - laki") @db.VarChar(50)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  role Roles @relation(fields: [role_id], references: [id])
+
+  Pemesanan         Pemesanan[]
+  Pemesanan_package PemesananPackage[]
+}
+
+model Kendaraan {
+  id        Int  @id @default(autoincrement())
+  lokasi_id Int?
+
+  nama                   String    @db.VarChar(250)
+  model                  String?   @db.VarChar(250)
+  tipe                   String    @default("MOBIL") @db.VarChar(250)
+  plat_nomor             String    @db.VarChar(250)
+  kapasitas              String?   @db.VarChar(250)
+  tanggal_pajak_berakhir DateTime? @db.DateTime()
+  harga                  Decimal   @default(0)
+
+  status_pajak Boolean @default(false)
+  status       Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  lokasi Lokasi? @relation(fields: [lokasi_id], references: [id])
+
+  kendaraan_content KendaraanContent[]
+  kendaraan_file    KendaaranFile[]
+  kendaraan_durasi  KendaraanDurasi[]
+}
+
+model KendaraanContent {
+  id           Int @id @default(autoincrement())
+  kendaraan_id Int
+
+  bahasa    String  @default("INDONESIA") @db.VarChar(250)
+  deskripsi String? @db.LongText
+  kebijakan String? @db.LongText
+  informasi String? @db.LongText
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  kendaraan Kendaraan @relation(fields: [kendaraan_id], references: [id])
+}
+
+model KendaraanDurasi {
+  id           Int @id @default(autoincrement())
+  kendaraan_id Int
+
+  durasi String @db.VarChar(250)
+
+  harga         Decimal
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime?
+  kendaraan     Kendaraan       @relation(fields: [kendaraan_id], references: [id])
+  PemesananItem PemesananItem[]
+}
+
+model KendaaranFile {
+  id           Int @id @default(autoincrement())
+  kendaraan_id Int
+
+  nama_file String @db.VarChar(250)
+  url       String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  kendaraan Kendaraan @relation(fields: [kendaraan_id], references: [id])
+}
+
+model Driver {
+  id Int @id @default(autoincrement())
+
+  nama      String  @db.VarChar(250)
+  driver_id String? @db.VarChar(250)
+  nomor_hp  String  @db.VarChar(50)
+  gender    String  @default("Laki - laki") @db.VarChar(50)
+
+  tanggal_periode_berakhir DateTime? @db.DateTime()
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+}
+
+model Guide {
+  id Int @id @default(autoincrement())
+
+  nama      String  @db.VarChar(250)
+  driver_id String? @db.VarChar(250)
+  nomor_hp  String  @db.VarChar(50)
+  gender    String  @default("Laki - laki") @db.VarChar(50)
+
+  tanggal_periode_berakhir DateTime? @db.DateTime()
+
+  fluent_english Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+}
+
+model Lokasi {
+  id        Int @id @default(autoincrement())
+  negara_id Int
+
+  nama   String  @db.VarChar(250)
+  alamat String? @db.LongText
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+  status    Boolean   @default(true)
+
+  negara Negara @relation(fields: [negara_id], references: [id])
+
+  travel_package TravelPackage[]
+  akomodasi      Akomodasi[]
+  kendaraan      Kendaraan[]
+}
+
+//TODO: DONE WITH ERROR IN UPDATE AND GET DETAILS DELETE
+model Negara {
+  id Int @id @default(autoincrement())
+
+  nama      String  @db.VarChar(250)
+  kode      String  @db.VarChar(250)
+  nama_file String? @db.VarChar(250)
+  url       String? @db.VarChar(250)
+  status    Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+  Kota      Kota[]
+  Lokasi    Lokasi[]
+}
+
+model Kota {
+  id        Int     @id @default(autoincrement())
+  negara_id Int
+  nama      String  @db.VarChar(250)
+  alamat    String? @db.LongText
+  status    Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  negara Negara @relation(fields: [negara_id], references: [id])
+}
+
+//DONE
+model Pemesanan {
+  id      Int @id @default(autoincrement())
+  user_id Int
+
+  total_harga Decimal @default(0)
+  status      String  @db.VarChar(250)
+  type        String? @db.VarChar(50)
+
+  deskripsi String? @db.LongText
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  user User @relation(fields: [user_id], references: [id])
+
+  pembayaran     Pembayaran[]
+  notifikasi_wa  NotfikasiWa[]
+  pemesanan_item PemesananItem[]
+}
+
+model PemesananItem {
+  id           Int  @id @default(autoincrement())
+  pemesanan_id Int
+  item_id      Int
+  durasi_id    Int?
+  room_id      Int?
+
+  jumlah_dewasa Int?
+  jumlah_anak   Int?
+
+  durasi_hari Int?
+
+  is_priority Boolean @default(false)
+
+  item_type String @db.VarChar(50)
+
+  total_harga Decimal @default(0)
+
+  tanggal_mulai   DateTime  @default(now()) @db.DateTime()
+  tanggal_selesai DateTime? @db.DateTime()
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  Pemesanan Pemesanan              @relation(fields: [pemesanan_id], references: [id])
+  durasi    KendaraanDurasi?       @relation(fields: [durasi_id], references: [id])
+  room      AkomodasiRoomAndPrice? @relation(fields: [room_id], references: [id])
+
+  @@index([item_type, item_id])
+}
+
+//DONE
+model Pembayaran {
+  id           Int     @id @default(autoincrement())
+  pemesanan_id Int
+  invoice_id   String? @db.VarChar(250)
+
+  tanggal_bayar DateTime @default(now()) @db.DateTime()
+  invoice_url   String?  @db.VarChar(250)
+  jumlah_bayar  Decimal  @default(0)
+  status        String   @db.VarChar(250)
+  metode        String?  @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  pemesanan      Pemesanan         @relation(fields: [pemesanan_id], references: [id])
+  pembayaranFile PemabayaranFile[]
+}
+
+model PemabayaranFile {
+  id            Int @id @default(autoincrement())
+  pembayaran_id Int
+
+  nama_file String @db.VarChar(250)
+  url       String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  pembayaran Pembayaran @relation(fields: [pembayaran_id], references: [id])
+}
+
+// TODO: DONE WITH ERROR IN UPDATE
+model TravelPackage {
+  id        Int @id @default(autoincrement())
+  lokasi_id Int
+
+  nama        String @db.VarChar(250)
+  tipe_durasi String @default("hari") @db.VarChar(250)
+
+  harga_dewasa Decimal @default(0)
+  harga_anak   Decimal @default(0)
+
+  durasi Int? @default(1)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  lokasi Lokasi @relation(fields: [lokasi_id], references: [id])
+
+  travel_package_content   TravelPackageContent[]
+  pemesananPackage         PemesananPackage[]
+  travelPackageFile        TravelPackageFile[]
+  travel_package_itinerary TravelPackageItinerary[]
+}
+
+model TravelPackageContent {
+  id                Int @id @default(autoincrement())
+  travel_package_id Int
+
+  bahasa    String  @default("INDONESIA") @db.VarChar(250)
+  deskripsi String? @db.LongText
+  kebijakan String? @db.LongText
+  informasi String? @db.LongText
+  itinerary String  @db.LongText
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  travel_package TravelPackage @relation(fields: [travel_package_id], references: [id])
+}
+
+model TravelPackageItinerary {
+  id                Int @id @default(autoincrement())
+  travel_package_id Int
+
+  nama   String @db.VarChar(250)
+  bahasa String @default("INDONESIA") @db.VarChar(50)
+
+  deskripsi      String        @db.LongText
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime?
+  travel_package TravelPackage @relation(fields: [travel_package_id], references: [id])
+}
+
+model TravelPackageFile {
+  id                Int @id @default(autoincrement())
+  travel_package_id Int
+
+  nama_file String @db.VarChar(250)
+  url       String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  travel_package TravelPackage @relation(fields: [travel_package_id], references: [id])
+}
+
+model PemesananPackage {
+  id                Int @id @default(autoincrement())
+  travel_package_id Int
+  user_id           Int
+
+  tanggal_berangkat DateTime @default(now()) @db.DateTime()
+  jumlah_orang      Int
+  total_harga       Decimal  @default(0)
+  status            String   @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  user          User          @relation(fields: [user_id], references: [id])
+  travelPackage TravelPackage @relation(fields: [travel_package_id], references: [id])
+}
+
+model NotfikasiWa {
+  id           Int @id @default(autoincrement())
+  pemesanan_id Int
+
+  tipe_notifikasi String @default("pemesanan") @db.VarChar(250)
+  penerima        String @default("admin") @db.VarChar(250)
+  status          String @default("terkirim") @db.VarChar(250)
+
+  pesan       String   @db.LongText
+  nomor_wa    String   @db.VarChar(250)
+  waktu_kirim DateTime @db.DateTime()
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  pemesanan Pemesanan @relation(fields: [pemesanan_id], references: [id])
+}
+
+//DONE
+model AdminWa {
+  id      Int @id @default(autoincrement())
+  role_id Int
+
+  nomor_wa String @db.VarChar(250)
+  nama     String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  role Roles @relation(fields: [role_id], references: [id])
+}
+
+model Akomodasi {
+  id        Int @id @default(autoincrement())
+  lokasi_id Int
+
+  nama     String @db.VarChar(250)
+  kategori String @db.VarChar(250)
+  tipe     String @default("hotel") @db.VarChar(250)
+
+  status Boolean @default(true)
+
+  harga Decimal @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  lokasi                   Lokasi                   @relation(fields: [lokasi_id], references: [id])
+  akomodasi_content        AkomodasiContent[]
+  akomodasi_file           AkomodasiFile[]
+  akomodasi_room_and_price AkomodasiRoomAndPrice[]
+  akomodasi_facility_group AkomodasiFacilityGroup[]
+}
+
+model AkomodasiRoomAndPrice {
+  id           Int       @id @default(autoincrement())
+  akomodasi_id Int
+  nama         String    @db.VarChar(250)
+  harga        Decimal   @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime?
+
+  akomodasi     Akomodasi       @relation(fields: [akomodasi_id], references: [id])
+  PemesananItem PemesananItem[]
+}
+
+model AkomodasiFacilityGroup {
+  id           Int       @id @default(autoincrement())
+  akomodasi_id Int
+  nama         String    @db.VarChar(250) // e.g., "Deluxe"
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime?
+
+  akomodasi Akomodasi           @relation(fields: [akomodasi_id], references: [id])
+  fasilitas AkomodasiFacility[]
+}
+
+model AkomodasiFacility {
+  id                Int       @id @default(autoincrement())
+  facility_group_id Int
+  nama              String    @db.VarChar(250) // e.g., "TV", "AC"
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime?
+
+  group AkomodasiFacilityGroup @relation(fields: [facility_group_id], references: [id])
+}
+
+model AkomodasiContent {
+  id           Int @id @default(autoincrement())
+  akomodasi_id Int
+
+  bahasa    String  @default("INDONESIA") @db.VarChar(250)
+  deskripsi String? @db.LongText
+  kebijakan String? @db.LongText
+  informasi String? @db.LongText
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  akomodasi Akomodasi @relation(fields: [akomodasi_id], references: [id])
+}
+
+model AkomodasiFile {
+  id           Int @id @default(autoincrement())
+  akomodasi_id Int
+
+  nama_file String @db.VarChar(250)
+  url       String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  akomodasi Akomodasi @relation(fields: [akomodasi_id], references: [id])
+}
+
+//DONE
+model Roles {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  admin_wa AdminWa[]
+  user     User[]
+}
+
+enum TipeKendaraan {
+  mobil
+  motor
+}
+
+enum Bahasa {
+  indonesia
+  inggris
+}
+
+enum TipeNotifikasi {
+  pemesanan
+  pembayaran
+  selesai
+  perjalanan
+}
+
+enum PenerimaNotifikasi {
+  admin
+  customer
+}
+
+enum StatusPengiriman {
+  terkirim
+  gagal
+}
+
+model WhatsappChannel {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  session   String
+  status    String   @default("PENDING") // SCAN_QR, CONNECTED, DISCONNECTED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum TipeAkomodasi {
+  hotel
+  eco_lodge
+  guest_house
+}

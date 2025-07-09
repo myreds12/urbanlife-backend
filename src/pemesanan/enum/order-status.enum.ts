@@ -1,0 +1,6 @@
+export enum OrderStatus {
+  PENDINNG = 'PENDING',
+  DIKONFIRMASI = 'DIKONFIRMASI',
+  SELESAI = 'SELESAI',
+  DIBATALKAN = 'DIBATALKAN',
+}

@@ -1,0 +1,68 @@
+/* eslint-disable prettier/prettier */
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { omit } from 'lodash';
+import { UsersService } from '../users/users.service';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
+import { User } from '@prisma/client';
+import { JwtConfig } from 'src/jwt.config';
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
+  ) {}
+
+  async login(loginDto: LoginDto) {
+    console.log('LOGIN DTO', loginDto.email, loginDto.password);
+    const user = await this.usersService.findByEmail(loginDto.email);
+    console.log(user);
+    const checkPassword = await bcrypt.compare(loginDto.password, user.password);
+    if (!checkPassword) {
+      throw new HttpException('Username atau Password salah', HttpStatus.UNAUTHORIZED);
+    }
+
+    return await this.generateJwt(
+      user,
+      JwtConfig.user_secret,
+      JwtConfig.user_expired,
+      user.role.name,
+    );
+  }
+
+  async register(data: RegisterDto) {
+    try {
+      const hashed = await bcrypt.hash(data.password, 10);
+      return this.usersService.create({ ...data, password: hashed });
+    } catch (error) {
+      throw new Error('Registration failed: ' + error.message);
+    }
+  }
+
+  async generateJwt(user: User, secret: any, expired = JwtConfig.user_expired, roleUser: string) {
+    const { id, email, role_id } = user;
+
+    const accessToken = this.jwtService.sign(
+      {
+        id: id,
+        email,
+        role_id,
+      },
+      {
+        expiresIn: expired,
+        secret,
+      },
+    );
+    const role = roleUser ? roleUser : 'user'; // Default to 'user' if no role is provided
+    const expriresIn = expired || JwtConfig.user_expired;
+    return {
+      accessToken: accessToken,
+      user: omit(user, ['password', 'created_at', 'updated_at', 'deleted_at']),
+      role,
+      expiresIn: expriresIn,
+    };
+  }
+}
