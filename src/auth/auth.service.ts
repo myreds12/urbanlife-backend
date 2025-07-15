@@ -20,9 +20,12 @@ export class AuthService {
     console.log('LOGIN DTO', loginDto.email, loginDto.password);
     const user = await this.usersService.findByEmail(loginDto.email);
     console.log(user);
+    if (!user) {
+      throw new HttpException('Username atau Password salah', HttpStatus.UNAUTHORIZED);
+    }
     const checkPassword = await bcrypt.compare(loginDto.password, user.password);
     if (!checkPassword) {
-      throw new HttpException('Username atau Password salah', HttpStatus.UNAUTHORIZED);
+      throw new HttpException('Password salah', HttpStatus.UNAUTHORIZED);
     }
 
     return await this.generateJwt(
@@ -64,5 +67,18 @@ export class AuthService {
       role,
       expiresIn: expriresIn,
     };
+  }
+
+  async resetPassword(id: number, body: { new_password: string; confirm_password: string }) {
+    try {
+      if (body.new_password !== body.confirm_password) {
+        throw new HttpException('Password tidak sama', HttpStatus.BAD_REQUEST);
+      }
+
+      const hashed = await bcrypt.hash(body.new_password, 10);
+      return this.usersService.update(id, hashed);
+    } catch (error) {
+      throw error;
+    }
   }
 }

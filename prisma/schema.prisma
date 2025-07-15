@@ -465,6 +465,53 @@ model Roles {
   user     User[]
 }
 
+model News {
+  id          Int @id @default(autoincrement())
+  category_id Int
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  news_category NewsCategory  @relation(fields: [category_id], references: [id])
+  news_file     NewsFile[]
+  news_content  NewsContent[]
+}
+
+model NewsContent {
+  id      Int @id @default(autoincrement())
+  news_id Int
+
+  judul     String @db.VarChar(250)
+  bahasa    String @default("INDONESIA") @db.VarChar(250)
+  deskripsi String @db.LongText
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+  news      News      @relation(fields: [news_id], references: [id])
+}
+
+model NewsFile {
+  id        Int    @id @default(autoincrement())
+  news_id   Int
+  nama_file String @db.VarChar(250)
+  url       String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  news News @relation(fields: [news_id], references: [id])
+}
+
+model NewsCategory {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+  News      News[]
+}
+
 enum TipeKendaraan {
   mobil
   motor

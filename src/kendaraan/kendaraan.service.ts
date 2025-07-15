@@ -157,7 +157,7 @@ export class KendaraanService {
 
   async findOne(id: number) {
     try {
-      const kendaraan = await this.prismaService.kendaraan.findUnique({
+      const kendaraan = await this.prismaService.kendaraan.findFirstOrThrow({
         where: { id },
         include: {
           lokasi: {

@@ -18,6 +18,8 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { KotaModule } from './kota/kota.module';
 import { GuideModule } from './guide/guide.module';
 import { DriverModule } from './driver/driver.module';
+import { NewsModule } from './news/news.module';
+import { NewsCategoryModule } from './news-category/news-category.module';
 
 @Module({
   imports: [
@@ -38,6 +40,8 @@ import { DriverModule } from './driver/driver.module';
     KotaModule,
     GuideModule,
     DriverModule,
+    NewsModule,
+    NewsCategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

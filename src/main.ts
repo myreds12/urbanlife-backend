@@ -19,6 +19,9 @@ async function bootstrap() {
 
   app.useStaticAssets(staticPath, {
     prefix: '/public/',
+    setHeaders: res => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    },
   });
   const swaggerConfig = new DocumentBuilder()
     .setTitle('URBAN LIFE REST API')
