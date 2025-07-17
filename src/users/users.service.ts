@@ -1,28 +1,32 @@
 /* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: any) {
+  async create(data: {
+    nama: string;
+    email: string;
+    nomor_hp: string;
+    password: string;
+    role_id: number;
+  }) {
     try {
-      const hashed = await bcrypt.hash(data.password, 10);
-      return this.prisma.user.create({
+      return await this.prisma.user.create({
         data: {
           nama: data.nama,
           email: data.email,
           nomor_hp: data.nomor_hp,
+          password: data.password,
           role: {
             connect: { id: data.role_id },
           },
-          password: hashed, // Ensure password is hashed in the controller or service
         },
       });
     } catch (error) {
-      throw new Error();
+      throw new Error(`User creation failed: ${error.message}`);
     }
   }
 

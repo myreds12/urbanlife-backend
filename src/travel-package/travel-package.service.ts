@@ -294,7 +294,7 @@ export class TravelPackageService {
 
       // Jalankan transaksi update
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const [_, __, updatedPackage] = await this.prismaService.$transaction([
+      const [_, __, ___, updatedPackage] = await this.prismaService.$transaction([
         // Hapus semua file sebelumnya
         this.prismaService.travelPackageFile.deleteMany({
           where: { travel_package_id: id },

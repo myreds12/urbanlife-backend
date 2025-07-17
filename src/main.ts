@@ -9,6 +9,7 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { PrismaExceptionFilter } from './common/filters/prisma-known-exception.filter';
 import { PrismaValidationFilter } from './common/filters/prisma-validation-error.filter';
 import { NotFoundExceptionFilter } from './common/filters/not-found-exceptopm.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -30,6 +31,8 @@ async function bootstrap() {
     .build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api', app, swaggerDocument);
+
+  app.useGlobalInterceptors(new LoggingInterceptor());
 
   app.useGlobalPipes(new ValidationPipe({ transform: true }));
   app.useGlobalFilters(

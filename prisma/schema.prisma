@@ -209,7 +209,7 @@ model PemesananItem {
 
   total_harga Decimal @default(0)
 
-  tanggal_mulai   DateTime  @default(now()) @db.DateTime()
+  tanggal_mulai   DateTime  @default(now())
   tanggal_selesai DateTime? @db.DateTime()
 
   createdAt DateTime  @default(now())
@@ -228,7 +228,7 @@ model Pembayaran {
   pemesanan_id Int
   invoice_id   String? @db.VarChar(250)
 
-  tanggal_bayar DateTime @default(now()) @db.DateTime()
+  tanggal_bayar DateTime @default(now())
   invoice_url   String?  @db.VarChar(250)
   jumlah_bayar  Decimal  @default(0)
   status        String   @db.VarChar(250)
@@ -325,7 +325,7 @@ model PemesananPackage {
   travel_package_id Int
   user_id           Int
 
-  tanggal_berangkat DateTime @default(now()) @db.DateTime()
+  tanggal_berangkat DateTime @default(now())
   jumlah_orang      Int
   total_harga       Decimal  @default(0)
   status            String   @db.VarChar(250)

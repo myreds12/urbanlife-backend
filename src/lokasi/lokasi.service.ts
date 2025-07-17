@@ -16,10 +16,13 @@ export class LokasiService {
 
   async findAll(query: QueryParamsDto) {
     try {
-      const { take, page } = query;
+      const { take, page, negara_id } = query;
       const skip = page * take - take;
       const count = await this.prismaService.lokasi.count();
       const lokasi = await this.prismaService.lokasi.findMany({
+        where: {
+          ...(negara_id && { negara_id }),
+        },
         skip,
         take: take > 0 ? take : undefined,
         orderBy: {

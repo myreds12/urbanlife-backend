@@ -15,7 +15,6 @@ import { NotifikasiWaModule } from './notifikasi-wa/notifikasi-wa.module';
 import { AdminWaModule } from './admin-wa/admin-wa.module';
 import { AkomodasiModule } from './akomodasi/akomodasi.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
-import { KotaModule } from './kota/kota.module';
 import { GuideModule } from './guide/guide.module';
 import { DriverModule } from './driver/driver.module';
 import { NewsModule } from './news/news.module';
@@ -37,7 +36,6 @@ import { NewsCategoryModule } from './news-category/news-category.module';
     AdminWaModule,
     AkomodasiModule,
     WhatsappModule,
-    KotaModule,
     GuideModule,
     DriverModule,
     NewsModule,

@@ -37,12 +37,12 @@ export class AuthService {
   }
 
   async register(data: RegisterDto) {
-    try {
-      const hashed = await bcrypt.hash(data.password, 10);
-      return this.usersService.create({ ...data, password: hashed });
-    } catch (error) {
-      throw new Error('Registration failed: ' + error.message);
-    }
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    return this.usersService.create({
+      ...data,
+      password: hashedPassword,
+    });
   }
 
   async generateJwt(user: User, secret: any, expired = JwtConfig.user_expired, roleUser: string) {

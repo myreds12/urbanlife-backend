@@ -18,11 +18,11 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 
-@UseGuards(JwtAuthGuard)
 @Controller('negara')
 export class NegaraController {
   constructor(private readonly negaraService: NegaraService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Post()
   @UseInterceptors(FileInterceptor('file'))
   create(@Body() createNegaraDto: CreateNegaraDto, @UploadedFile() file: Express.Multer.File) {
@@ -39,6 +39,7 @@ export class NegaraController {
     return this.negaraService.findOne(+id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @UseInterceptors(FileInterceptor('file'))
   update(
@@ -49,6 +50,7 @@ export class NegaraController {
     return this.negaraService.update(+id, updateNegaraDto, file);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.negaraService.remove(+id);

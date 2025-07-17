@@ -23,10 +23,14 @@ interface UserRequest extends IExpressRequest {
   user: User;
 }
 
-@UseGuards(JwtAuthGuard)
 @Controller('pemesanan')
 export class PemesananController {
   constructor(private readonly pemesananService: PemesananService) {}
+
+  @Get('/popular-items')
+  getPopularPemesananItems(@Query() query: QueryParamsDto) {
+    return this.pemesananService.getPopularPemesananItems(query);
+  }
 
   @Get('/items')
   getAllPemesananItems(@Query() query: QueryParamsDto) {
@@ -38,6 +42,7 @@ export class PemesananController {
     return this.pemesananService.create(createPemesananDto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get()
   findAll(@Query() query: QueryParamsDto) {
     return this.pemesananService.findAll(query);
@@ -57,6 +62,7 @@ export class PemesananController {
     return this.pemesananService.update(+id, updatePemesananDto, req.user);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.pemesananService.remove(+id);
