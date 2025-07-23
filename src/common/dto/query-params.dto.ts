@@ -12,6 +12,9 @@ export class QueryParamsDto {
   @IsOptional()
   offset?: number;
 
+  @IsOptional()
+  tahun?: number;
+
   is_category?: string;
 
   @IsOptional()

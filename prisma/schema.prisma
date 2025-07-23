@@ -25,6 +25,7 @@ model User {
 
   Pemesanan         Pemesanan[]
   Pemesanan_package PemesananPackage[]
+  AdminWa           AdminWa[]
 }
 
 model Kendaraan {
@@ -358,15 +359,20 @@ model NotfikasiWa {
 //DONE
 model AdminWa {
   id      Int @id @default(autoincrement())
+  user_id Int
   role_id Int
 
   nomor_wa String @db.VarChar(250)
   nama     String @db.VarChar(250)
+  session  String @db.VarChar(250)
+
+  is_active Boolean @default(true)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime?
 
   role Roles @relation(fields: [role_id], references: [id])
+  user User  @relation(fields: [user_id], references: [id])
 }
 
 model Akomodasi {

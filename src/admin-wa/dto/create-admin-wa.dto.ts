@@ -14,4 +14,9 @@ export class CreateAdminWaDto {
   @IsNotEmpty()
   @MaxLength(250)
   nama: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(250)
+  session: string;
 }

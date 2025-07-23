@@ -20,9 +20,13 @@ export class AdminWaService {
 
       const adminWa = await this.prismaService.adminWa.create({
         data: {
+          user: {
+            connect: { id: 1 }, // Ganti dengan ID user yang sesuai
+          },
           role: { connect: { id: createAdminWaDto.role_id } },
           nomor_wa: createAdminWaDto.nomor_wa,
           nama: createAdminWaDto.nama,
+          session: createAdminWaDto.session,
         },
       });
       return adminWa;
@@ -85,6 +89,7 @@ export class AdminWaService {
           ...(updateAdminWaDto.role_id && { role: { connect: { id: updateAdminWaDto.role_id } } }),
           ...(updateAdminWaDto.nomor_wa && { nomor_wa: updateAdminWaDto.nomor_wa }),
           ...(updateAdminWaDto.nama && { nama: updateAdminWaDto.nama }),
+          ...(updateAdminWaDto.session && { session: updateAdminWaDto.session }),
         },
       });
       return adminWa;

@@ -1,14 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreatePemesananDto } from './dto/create-pemesanan.dto';
 import { UpdatePemesananDto } from './dto/update-pemesanan.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma, User } from '@prisma/client';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 import * as bcrypt from 'bcrypt';
+import { WhatsappService } from 'src/whatsapp/whatsapp.service';
+import { differenceInCalendarDays, endOfMonth, startOfMonth, subMonths } from 'date-fns'; // pastikan di-import
 
 @Injectable()
 export class PemesananService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly whatsappService: WhatsappService,
+  ) {}
+  private readonly logger = new Logger(PemesananService.name);
+
   async create(createPemesananDto: CreatePemesananDto) {
     const { status, total_harga, nama, email, nomor_hp, deskripsi, order_item, type } =
       createPemesananDto;
@@ -18,12 +25,11 @@ export class PemesananService {
       select: { id: true },
     });
 
-    if (!userRole) {
-      throw new NotFoundException('Role "User" tidak ditemukan');
-    }
+    if (!userRole) throw new NotFoundException('Role "User" tidak ditemukan');
 
     const defaultPassword = await bcrypt.hash(`${nama}-${nomor_hp}`, 10);
 
+    // Step 1: Create User
     const createdUser = await this.prismaService.user.create({
       data: {
         nama,
@@ -36,6 +42,7 @@ export class PemesananService {
       },
     });
 
+    // Format Items
     const formattedItems: Prisma.PemesananItemCreateManyPemesananInput[] =
       order_item?.map(item => ({
         item_id: item.item_id,
@@ -49,6 +56,7 @@ export class PemesananService {
         tanggal_selesai: item.tanggal_selesai ? new Date(item.tanggal_selesai) : undefined,
       })) ?? [];
 
+    // Step 2: Create Pemesanan (pakai id)
     const pemesanan = await this.prismaService.pemesanan.create({
       data: {
         type,
@@ -56,7 +64,7 @@ export class PemesananService {
         deskripsi,
         total_harga,
         user: {
-          connect: { id: createdUser.id },
+          connect: { id: createdUser.id }, // ✅ id pasti valid & unique
         },
         pemesanan_item: {
           createMany: {
@@ -76,7 +84,121 @@ export class PemesananService {
       },
     });
 
+    // Jalankan sendMessage async
+    this.sendPemesananMessage(pemesanan.id).catch(e =>
+      this.logger.error(`❌ Gagal kirim pesan pemesanan WA: ${e.message}`),
+    );
+
     return pemesanan;
+  }
+
+  async sendPemesananMessage(pemesananId: number) {
+    try {
+      const pemesanan = await this.prismaService.pemesanan.findUnique({
+        where: { id: pemesananId },
+        include: {
+          user: true,
+          pemesanan_item: true,
+        },
+      });
+
+      if (!pemesanan) throw new Error(`Pemesanan ID ${pemesananId} tidak ditemukan`);
+
+      const itemIds = pemesanan.pemesanan_item.map(i => i.item_id);
+      const durasiIds = pemesanan.pemesanan_item.map(i => i.durasi_id).filter(Boolean);
+      const roomIds = pemesanan.pemesanan_item.map(i => i.room_id).filter(Boolean);
+
+      // Batch Fetch
+      const [kendaraans, durasiKendaraan, akomodasiRooms, travelPackages] = await Promise.all([
+        this.prismaService.kendaraan.findMany({
+          where: { id: { in: itemIds } },
+          select: { id: true, nama: true },
+        }),
+        this.prismaService.kendaraanDurasi.findMany({
+          where: { id: { in: durasiIds as number[] } },
+          select: { id: true, durasi: true },
+        }),
+        this.prismaService.akomodasiRoomAndPrice.findMany({
+          where: { id: { in: roomIds as number[] } },
+          include: { akomodasi: { select: { nama: true } } },
+        }),
+        this.prismaService.travelPackage.findMany({
+          where: { id: { in: itemIds } },
+          select: { id: true, nama: true },
+        }),
+      ]);
+
+      const kendaraanMap = new Map(kendaraans.map(k => [k.id, k.nama]));
+      const durasiMap = new Map(durasiKendaraan.map(d => [d.id, d.durasi]));
+      const roomMap = new Map(akomodasiRooms.map(r => [r.id, r]));
+      const travelMap = new Map(travelPackages.map(t => [t.id, t.nama]));
+
+      const itemTexts = pemesanan.pemesanan_item.map(item => {
+        let namaItem = '';
+        let durasi = '-';
+
+        const tanggalMulai = item.tanggal_mulai ? new Date(item.tanggal_mulai) : null;
+        const tanggalSelesai = item.tanggal_selesai ? new Date(item.tanggal_selesai) : null;
+        const diff =
+          tanggalMulai && tanggalSelesai
+            ? differenceInCalendarDays(tanggalSelesai, tanggalMulai)
+            : null;
+
+        switch (item.item_type) {
+          case 'KENDARAAN':
+            namaItem = kendaraanMap.get(item.item_id) ?? 'Kendaraan';
+            durasi =
+              item.durasi_hari != null
+                ? `${item.durasi_hari} hari`
+                : item.durasi_id
+                  ? `${durasiMap.get(item.durasi_id) ?? '-'}`
+                  : '-';
+            break;
+
+          case 'TRAVEL_PACKAGE':
+            namaItem = travelMap.get(item.item_id) ?? 'Travel Package';
+            durasi = diff !== null ? `${diff} hari` : '-';
+            break;
+
+          case 'AKOMODASI':
+            const room = roomMap.get(item.room_id ?? 0);
+            namaItem = `${room?.akomodasi?.nama ?? 'Akomodasi'} - ${room?.nama ?? 'Room'}`;
+            durasi = diff !== null ? `${diff} hari` : '-';
+            break;
+
+          default:
+            namaItem = 'Item tidak dikenali';
+        }
+
+        return `• ${namaItem} (durasi ${durasi})`;
+      });
+
+      const adminWa = await this.prismaService.adminWa.findFirst({
+        where: { is_active: true },
+        select: { session: true },
+      });
+
+      if (!adminWa?.session) {
+        this.logger.warn('⚠️ Tidak ada session WhatsApp admin yang aktif.');
+        return;
+      }
+
+      const message =
+        `Hi ${pemesanan.user.nama},\n\n` +
+        `Terima kasih telah mempercayakan perjalanan anda bersama urbanlife.id.\n\n` +
+        `Selesaikan pembayaran Order ID *${pemesanan.id}* untuk pemesanan berikut:\n\n` +
+        `${itemTexts.join('\n')}\n\n` +
+        `Total pembayaran:\nIDR ${Number(pemesanan.total_harga).toLocaleString('id-ID')}`;
+
+      await this.whatsappService.sendMessage(
+        adminWa.session,
+        pemesanan.user.nomor_hp,
+        message,
+        pemesananId,
+      );
+    } catch (error) {
+      this.logger.error(`❌ Gagal kirim pesan pemesanan WA: ${error.message}`);
+    }
   }
 
   async findAll(query: QueryParamsDto) {
@@ -776,5 +898,99 @@ export class PemesananService {
     merged.sort((a, b) => b.count - a.count);
 
     return merged.slice(0, take);
+  }
+
+  async totalPemesanan() {
+    try {
+      const lastMonth = subMonths(new Date(), 1);
+      const start = startOfMonth(lastMonth);
+      const end = endOfMonth(lastMonth);
+
+      // Total pemesanan bulan kemarin
+      const totalPemesanan = await this.prismaService.pemesanan.count({
+        where: {
+          createdAt: {
+            gte: start,
+            lte: end,
+          },
+        },
+      });
+
+      // Ambil role "User"
+      const userRole = await this.prismaService.roles.findFirst({
+        where: { name: 'User' },
+        select: { id: true },
+      });
+
+      let totalCustomer = 0;
+
+      if (userRole) {
+        // Total customer (user dengan role "User") yang mendaftar bulan kemarin
+        totalCustomer = await this.prismaService.user.count({
+          where: {
+            role_id: userRole.id,
+            createdAt: {
+              gte: start,
+              lte: end,
+            },
+          },
+        });
+      }
+
+      return {
+        pemesanan: totalPemesanan,
+        customer: totalCustomer,
+        periode: {
+          bulan: lastMonth.getMonth() + 1, // +1 karena getMonth dimulai dari 0
+          tahun: lastMonth.getFullYear(),
+        },
+      };
+    } catch (error) {
+      console.error('❌ Error fetching monthly pemesanan/customer:', error);
+      throw error;
+    }
+  }
+
+  async pemesananPerBulan(query: QueryParamsDto) {
+    try {
+      const { tahun } = query;
+      const startDate = new Date(`${tahun}-01-01T00:00:00.000Z`);
+      const endDate = new Date(`${tahun}-12-31T23:59:59.999Z`);
+
+      const pemesananList = await this.prismaService.pemesanan.findMany({
+        where: {
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+        select: {
+          createdAt: true,
+        },
+      });
+
+      const countMap: Record<string, number> = {};
+
+      for (const item of pemesananList) {
+        const date = new Date(item.createdAt);
+        const month = `${date.getMonth() + 1}`.padStart(2, '0');
+        const key = `${tahun}-${month}`;
+        countMap[key] = (countMap[key] || 0) + 1;
+      }
+
+      const allMonths = Array.from({ length: 12 }, (_, i) => {
+        const month = (i + 1).toString().padStart(2, '0');
+        const key = `${tahun}-${month}`;
+        return {
+          month: key,
+          count: countMap[key] || 0,
+        };
+      });
+
+      return allMonths;
+    } catch (error) {
+      console.error('Error fetching pemesanan per bulan:', error);
+      throw new Error('Failed to get pemesanan data by month');
+    }
   }
 }

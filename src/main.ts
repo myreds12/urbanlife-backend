@@ -13,7 +13,13 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    cors: true,
+    cors: {
+      origin: process.env.FE_URL, // Izinkan semua origin
+      methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'], // ✅ array
+      credentials: true,
+      allowedHeaders: 'Content-Type, Accept, Authorization',
+      exposedHeaders: 'Content-Disposition',
+    },
   });
   const staticPath = join(__dirname, '..', 'uploads');
   console.log('Serving static files from:', staticPath);

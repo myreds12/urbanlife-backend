@@ -27,6 +27,16 @@ interface UserRequest extends IExpressRequest {
 export class PemesananController {
   constructor(private readonly pemesananService: PemesananService) {}
 
+  @Get('/total')
+  totalPemsanan() {
+    return this.pemesananService.totalPemesanan();
+  }
+
+  @Get('/perbulan')
+  pemesananPerbulan(@Query() query: QueryParamsDto) {
+    return this.pemesananService.pemesananPerBulan(query);
+  }
+
   @Get('/popular-items')
   getPopularPemesananItems(@Query() query: QueryParamsDto) {
     return this.pemesananService.getPopularPemesananItems(query);

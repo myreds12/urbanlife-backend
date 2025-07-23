@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, Query } from '@nestjs/common';
 import { NotifikasiWaService } from './notifikasi-wa.service';
 import { CreateNotifikasiWaDto } from './dto/create-notifikasi-wa.dto';
 import { UpdateNotifikasiWaDto } from './dto/update-notifikasi-wa.dto';
 import { Request as IExpressRequest } from 'express';
 import { User } from '@prisma/client';
+import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 
 interface UserRequest extends IExpressRequest {
   user: User;
@@ -24,8 +25,8 @@ export class NotifikasiWaController {
   }
 
   @Get()
-  findAll() {
-    return this.notifikasiWaService.findAll();
+  findAll(@Query() query: QueryParamsDto) {
+    return this.notifikasiWaService.findAll(query);
   }
 
   @Get(':id')

@@ -19,9 +19,11 @@ import { GuideModule } from './guide/guide.module';
 import { DriverModule } from './driver/driver.module';
 import { NewsModule } from './news/news.module';
 import { NewsCategoryModule } from './news-category/news-category.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     RoleModule,
     PrismaModule,
     UsersModule,
