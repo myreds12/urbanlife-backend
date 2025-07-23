@@ -65,6 +65,7 @@ export class WhatsappService {
         autoClose: 0,
         tokenStore: 'file',
         folderNameToken: './tokens',
+        browserArgs: ['--no-sandbox', '--disable-setuid-sandbox'],
       })
         .then(async client => {
           this.clients.set(sessionId, client);
