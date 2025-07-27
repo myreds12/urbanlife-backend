@@ -145,7 +145,8 @@ export class WhatsappService {
     try {
       const client = this.clients.get(sessionId);
       if (!client) {
-        throw new Error(`Client ${sessionId} not connected`);
+        this.logger.warn('⚠️ Client tidak ditemukan.');
+        return;
       }
 
       const number = to.replace(/\D/g, '') + '@c.us';

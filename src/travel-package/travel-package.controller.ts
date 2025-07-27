@@ -53,7 +53,7 @@ export class TravelPackageController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.travelPackageService.remove(+id);
+  remove(@Body('ids') ids: number[]) {
+    return this.travelPackageService.remove(ids);
   }
 }

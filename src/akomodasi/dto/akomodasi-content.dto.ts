@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class AkomodasiContentDto {
   @IsOptional()
@@ -17,12 +17,9 @@ export class AkomodasiContentDto {
   deskripsi?: string;
 
   @IsOptional()
-  @IsString()
-  @IsNotEmpty()
   kebijakan?: string;
 
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
   informasi?: string;
 }

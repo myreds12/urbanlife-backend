@@ -34,7 +34,6 @@ export class PembayaranController {
     return this.pembayaranService.handleXenditWebhook(payload);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post()
   @UseInterceptors(FilesInterceptor('files'))
   create(

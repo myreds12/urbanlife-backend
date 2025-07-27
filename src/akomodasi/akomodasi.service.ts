@@ -200,6 +200,22 @@ export class AkomodasiService {
           akomodasi_file: {
             select: { id: true, nama_file: true, url: true },
           },
+          akomodasi_room_and_price: {
+            select: {
+              id: true,
+              nama: true,
+              harga: true,
+            },
+          },
+          akomodasi_facility_group: {
+            select: {
+              id: true,
+              nama: true,
+              fasilitas: {
+                select: { id: true, nama: true, facility_group_id: true },
+              },
+            },
+          },
         },
       });
       if (!akomodasi) {

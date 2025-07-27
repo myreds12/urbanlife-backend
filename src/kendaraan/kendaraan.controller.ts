@@ -61,8 +61,8 @@ export class KendaraanController {
     return this.kendaraanService.update(+id, updateKendaraanDto, files);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.kendaraanService.remove(+id);
+  @Delete()
+  remove(@Body('ids') ids: number[]) {
+    return this.kendaraanService.remove(ids);
   }
 }

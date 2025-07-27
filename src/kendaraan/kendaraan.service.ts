@@ -1,15 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateKendaraanDto } from './dto/create-kendaraan.dto';
 import { UpdateKendaraanDto } from './dto/update-kendaraan.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
+import { unlinkSync } from 'fs';
 
 @Injectable()
 export class KendaraanService {
   constructor(
     private readonly prismaService: PrismaService, // Assuming you have a PrismaService for database operations
   ) {}
+  private logger = new Logger(KendaraanService.name);
   async create(createKendaraanDto: CreateKendaraanDto, files: Express.Multer.File[]) {
     try {
       const {
@@ -36,13 +38,11 @@ export class KendaraanService {
         if (!lokasi) throw new NotFoundException(`Lokasi dengan ID ${lokasi_id} tidak ditemukan`);
       }
 
-      // Persiapan data file
       const kendaraanFiles = files.map(file => ({
         nama_file: file.filename,
         url: file.path,
       }));
 
-      // Persiapan konten kendaraan (jika ada)
       const kendaraanContent: Prisma.KendaraanContentCreateManyKendaraanInput[] =
         content?.map(item => ({
           deskripsi: item.deskripsi,
@@ -57,7 +57,6 @@ export class KendaraanService {
           harga: item.harga,
         })) ?? [];
 
-      // Bangun data utama
       const kendaraanData: Prisma.KendaraanCreateInput = {
         nama,
         tipe,
@@ -103,11 +102,44 @@ export class KendaraanService {
 
   async findAll(query: QueryParamsDto) {
     try {
-      const { take, page } = query;
+      const { take, page, search } = query;
       const skip = page * take - take;
       const count = await this.prismaService.kendaraan.count();
 
+      const where: Prisma.KendaraanWhereInput = {
+        ...(search && {
+          OR: [
+            {
+              nama: {
+                contains: search,
+              },
+            },
+            {
+              tipe: {
+                contains: search,
+              },
+            },
+            {
+              plat_nomor: {
+                contains: search,
+              },
+            },
+            {
+              model: {
+                contains: search,
+              },
+            },
+            {
+              kapasitas: {
+                contains: search,
+              },
+            },
+          ],
+        }),
+      };
+
       const kendaraan = await this.prismaService.kendaraan.findMany({
+        where,
         skip,
         take: take > 0 ? take : undefined,
         orderBy: {
@@ -175,6 +207,7 @@ export class KendaraanService {
               id: true,
               deskripsi: true,
               bahasa: true,
+              kebijakan: true,
             },
           },
           kendaraan_file: {
@@ -217,6 +250,8 @@ export class KendaraanService {
         });
         if (!lokasi) throw new NotFoundException(`Lokasi dengan ID ${lokasi_id} tidak ditemukan`);
       }
+
+      console.log('Update Kendaraan', files);
 
       // ✅ Siapkan file (jika ada)
       const kendaraanFiles = files.map(file => ({
@@ -330,33 +365,47 @@ export class KendaraanService {
     }
   }
 
-  async remove(id: number) {
+  async remove(ids: number[]) {
     try {
-      const kendaraan = await this.prismaService.kendaraan.findUnique({
-        where: { id },
+      const kendaraanList = await this.prismaService.kendaraan.findMany({
+        where: {
+          id: { in: ids },
+        },
+        include: {
+          kendaraan_file: true,
+        },
       });
 
-      if (!kendaraan) {
-        throw new NotFoundException(`Kendaraan dengan ID ${id} tidak ditemukan`);
+      if (!kendaraanList.length) {
+        throw new NotFoundException(`Tidak ada kendaraan ditemukan untuk ID ${ids.join(', ')}`);
+      }
+
+      for (const kendaraan of kendaraanList) {
+        for (const file of kendaraan.kendaraan_file) {
+          try {
+            unlinkSync(file.url); // Hapus file fisik
+          } catch (err) {
+            this.logger.warn(`⚠️ Gagal menghapus file: ${file.url}`);
+          }
+        }
       }
 
       await this.prismaService.$transaction([
         this.prismaService.kendaraanContent.deleteMany({
-          where: { kendaraan_id: id },
+          where: { kendaraan_id: { in: ids } },
         }),
         this.prismaService.kendaaranFile.deleteMany({
-          where: { kendaraan_id: id },
+          where: { kendaraan_id: { in: ids } },
         }),
-        this.prismaService.kendaraan.update({
-          where: { id },
-          data: {
-            status: false,
-          },
+        this.prismaService.kendaraan.updateMany({
+          where: { id: { in: ids } },
+          data: { status: false },
         }),
       ]);
 
-      return kendaraan;
+      return { message: `✅ ${ids.length} kendaraan berhasil di-nonaktifkan.` };
     } catch (error) {
+      this.logger.error(`❌ Error saat menghapus kendaraan: ${error.message}`);
       throw error;
     }
   }

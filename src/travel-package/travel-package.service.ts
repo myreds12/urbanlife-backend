@@ -1,13 +1,16 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateTravelPackageDto } from './dto/create-travel-package.dto';
 import { UpdateTravelPackageDto } from './dto/update-travel-package.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
+import { unlinkSync } from 'fs';
 
 @Injectable()
 export class TravelPackageService {
   constructor(private readonly prismaService: PrismaService) {}
+  private logger = new Logger(TravelPackageService.name);
+
   async create(createTravelPackageDto: CreateTravelPackageDto, files: Express.Multer.File[]) {
     try {
       const {
@@ -133,9 +136,21 @@ export class TravelPackageService {
 
   async findAll(query: QueryParamsDto) {
     try {
-      const { take, page } = query;
+      const { take, page, search } = query;
       const count = await this.prismaService.travelPackage.count();
+      const where: Prisma.TravelPackageWhereInput = {
+        ...(search && {
+          OR: [
+            {
+              nama: {
+                contains: search,
+              },
+            },
+          ],
+        }),
+      };
       const travelPackages = await this.prismaService.travelPackage.findMany({
+        where,
         skip: page * take - take,
         take: take > 0 ? take : undefined,
         orderBy: {
@@ -207,6 +222,14 @@ export class TravelPackageService {
               itinerary: true,
             },
           },
+          travel_package_itinerary: {
+            select: {
+              id: true,
+              bahasa: true,
+              deskripsi: true,
+              nama: true,
+            },
+          },
           travelPackageFile: {
             select: {
               id: true,
@@ -253,6 +276,7 @@ export class TravelPackageService {
 
       // Persiapkan ID konten yang ingin dipertahankan (untuk upsert dan delete)
       const preservedContentIds = travel_package_content?.filter(c => c.id).map(c => c.id) ?? [];
+      console.log('preservedContentIds', preservedContentIds);
       const preservedItineraryIds =
         travel_package_itinerary?.filter(c => c.id).map(c => c.id) ?? [];
 
@@ -328,12 +352,12 @@ export class TravelPackageService {
             durasi,
             ...(lokasi_id && { lokasi: { connect: { id: lokasi_id } } }),
             ...(upsertContent.length && {
-              travelPackageContent: {
+              travel_package_content: {
                 upsert: upsertContent,
               },
             }),
             ...(upsertItinerary.length && {
-              travelPackageItinerary: {
+              travel_package_itinerary: {
                 upsert: upsertItinerary,
               },
             }),
@@ -356,6 +380,18 @@ export class TravelPackageService {
         }),
       ]);
 
+      //Menghapus file secara lokal sesuai dengan data base
+
+      const existingFiles = await this.prismaService.travelPackageFile.findMany({
+        where: { travel_package_id: id },
+      });
+
+      existingFiles.forEach(file => {
+        if (!fileData.find(f => f.url === file.url)) {
+          unlinkSync(file.url);
+        }
+      });
+
       return updatedPackage;
     } catch (error) {
       console.error('Error updating travel package:', error);
@@ -363,25 +399,40 @@ export class TravelPackageService {
     }
   }
 
-  async remove(id: number) {
+  async remove(ids: number[]) {
     try {
-      const travelPackage = await this.prismaService.travelPackage.findUnique({
-        where: { id },
+      const travelPackage = await this.prismaService.travelPackage.findMany({
+        where: {
+          id: { in: ids },
+        },
+        include: {
+          travelPackageFile: true,
+        },
       });
 
-      if (!travelPackage) {
-        throw new NotFoundException(`Travel Package dengan ID ${id} tidak ditemukan`);
+      if (!travelPackage.length) {
+        throw new NotFoundException(`Tidak ada travel ditemukan untuk ID ${ids.join(', ')}`);
+      }
+
+      for (const travel of travelPackage) {
+        for (const file of travel.travelPackageFile) {
+          try {
+            unlinkSync(file.url); // Hapus file fisik
+          } catch (err) {
+            this.logger.warn(`⚠️ Gagal menghapus file: ${file.url}`);
+          }
+        }
       }
 
       await this.prismaService.$transaction([
         this.prismaService.travelPackageContent.deleteMany({
-          where: { travel_package_id: id },
+          where: { travel_package_id: { in: ids } },
         }),
         this.prismaService.travelPackageFile.deleteMany({
-          where: { travel_package_id: id },
+          where: { travel_package_id: { in: ids } },
         }),
-        this.prismaService.travelPackage.delete({
-          where: { id },
+        this.prismaService.travelPackage.deleteMany({
+          where: { id: { in: ids } },
         }),
       ]);
 
