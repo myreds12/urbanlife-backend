@@ -37,6 +37,17 @@ export class PemesananController {
     return this.pemesananService.pemesananPerBulan(query);
   }
 
+  @Get('/get-by-date/:date')
+  findByDate(@Param('date') date: string) {
+    return this.pemesananService.getDetailByDate(date);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('/calender')
+  calenderOrder(@Query() query: QueryParamsDto) {
+    return this.pemesananService.pemesananCalendar(query);
+  }
+
   @Get('/popular-items')
   getPopularPemesananItems(@Query() query: QueryParamsDto) {
     return this.pemesananService.getPopularPemesananItems(query);

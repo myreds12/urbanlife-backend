@@ -6,7 +6,14 @@ import { Prisma, User } from '@prisma/client';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 import * as bcrypt from 'bcrypt';
 import { WhatsappService } from 'src/whatsapp/whatsapp.service';
-import { differenceInCalendarDays, endOfMonth, startOfMonth, subMonths } from 'date-fns'; // pastikan di-import
+import {
+  differenceInCalendarDays,
+  eachDayOfInterval,
+  endOfMonth,
+  format,
+  startOfMonth,
+  subMonths,
+} from 'date-fns'; // pastikan di-import
 
 @Injectable()
 export class PemesananService {
@@ -465,6 +472,7 @@ export class PemesananService {
         ? this.prismaService.kendaraan.findMany({
             where: {
               status: true,
+              status_pajak: true,
               ...(bookedMap.has('KENDARAAN') ? { id: { notIn: bookedMap.get('KENDARAAN')! } } : {}),
               ...buildLokasiFilter(),
             },
@@ -991,6 +999,166 @@ export class PemesananService {
     } catch (error) {
       console.error('Error fetching pemesanan per bulan:', error);
       throw new Error('Failed to get pemesanan data by month');
+    }
+  }
+
+  async pemesananCalendar(query: QueryParamsDto) {
+    try {
+      console.log('query', query);
+      const { date_from, date_to } = query;
+
+      if (!date_from || !date_to) {
+        throw new Error('Parameter date_from dan date_to diperlukan');
+      }
+
+      const startDate = new Date(date_from);
+      const endDate = new Date(date_to);
+
+      console.log(typeof startDate, typeof endDate);
+
+      const pemesananItems = await this.prismaService.pemesananItem.findMany({
+        where: {
+          tanggal_mulai: {
+            lte: endDate,
+          },
+          tanggal_selesai: {
+            gte: startDate,
+          },
+          // Pemesanan: {
+          //   status: {
+          //     notIn: ['CANCELLED'], // opsional: filter pemesanan aktif
+          //   },
+          // },
+        },
+        select: {
+          tanggal_mulai: true,
+          tanggal_selesai: true,
+          item_type: true,
+        },
+      });
+
+      const grouped: Record<string, Set<string>> = {};
+
+      for (const item of pemesananItems) {
+        const mulai = new Date(item.tanggal_mulai);
+        const selesai = item.tanggal_selesai ? new Date(item.tanggal_selesai) : mulai;
+
+        const range = eachDayOfInterval({ start: mulai, end: selesai });
+
+        for (const date of range) {
+          const dateStr = format(date, 'yyyy-MM-dd');
+          if (!grouped[dateStr]) {
+            grouped[dateStr] = new Set();
+          }
+          grouped[dateStr].add(item.item_type); // contoh: 'KENDARAAN', 'TRAVEL_PACKAGE', 'AKOMODASI'
+        }
+      }
+
+      const allDates = eachDayOfInterval({ start: startDate, end: endDate });
+
+      return allDates.map(date => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        return {
+          date: dateStr,
+          categories: Array.from(grouped[dateStr] || []), // default []
+        };
+      });
+    } catch (error) {
+      console.error('Error fetching calendar data:', error);
+      throw new Error('Failed to get pemesanan calendar data');
+    }
+  }
+
+  async getDetailByDate(date: string) {
+    try {
+      const start = new Date(`${date}T00:00:00.000Z`);
+      const end = new Date(`${date}T23:59:59.999Z`);
+
+      // Ambil semua pemesanan item di hari itu beserta user-nya
+      const items = await this.prismaService.pemesananItem.findMany({
+        where: {
+          tanggal_mulai: {
+            gte: start,
+            lte: end,
+          },
+        },
+        select: {
+          item_id: true,
+          item_type: true,
+          Pemesanan: {
+            select: {
+              user: {
+                select: {
+                  nama: true,
+                  role: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Filter hanya customer (role: 'user')
+      const customerItems = items.filter(i => i.Pemesanan.user?.role.name === 'user');
+
+      // Kelompokkan berdasarkan item_type
+      const kendaraanIds = customerItems
+        .filter(i => i.item_type.toLowerCase() === 'kendaraan')
+        .map(i => i.item_id);
+
+      const akomodasiIds = customerItems
+        .filter(i => i.item_type.toLowerCase() === 'akomodasi')
+        .map(i => i.item_id);
+
+      const travelPackageIds = customerItems
+        .filter(i => i.item_type.toLowerCase() === 'travel_package')
+        .map(i => i.item_id);
+
+      // Ambil data lokasi dari masing-masing model
+      const [kendaraans, akomodasis, travelPackages] = await Promise.all([
+        this.prismaService.kendaraan.findMany({
+          where: { id: { in: kendaraanIds } },
+          include: { lokasi: true },
+        }),
+        this.prismaService.akomodasi.findMany({
+          where: { id: { in: akomodasiIds } },
+          include: { lokasi: true },
+        }),
+        this.prismaService.travelPackage.findMany({
+          where: { id: { in: travelPackageIds } },
+          include: { lokasi: true },
+        }),
+      ]);
+
+      // Buat map untuk lookup cepat
+      const kendaraanMap = new Map(kendaraans.map(k => [k.id, k.lokasi?.nama || '-']));
+      console.log(kendaraanMap, 'kendaraanMap');
+      const akomodasiMap = new Map(akomodasis.map(a => [a.id, a.lokasi?.nama || '-']));
+      const travelPackageMap = new Map(travelPackages.map(t => [t.id, t.lokasi?.nama || '-']));
+
+      // Gabungkan hasil akhir
+      const result = customerItems.map(item => {
+        let lokasi = '-';
+        if (item.item_type.toLowerCase() === 'kendaraan') {
+          lokasi = kendaraanMap.get(item.item_id) || '-';
+        } else if (item.item_type.toLowerCase() === 'akomodasi') {
+          lokasi = akomodasiMap.get(item.item_id) || '-';
+        } else if (item.item_type.toLowerCase() === 'travel_package') {
+          lokasi = travelPackageMap.get(item.item_id) || '-';
+        }
+
+        return {
+          customer: item.Pemesanan.user.nama,
+          type: item.item_type,
+          lokasi,
+        };
+      });
+
+      return result;
+    } catch (error) {
+      console.log(error);
+      console.error('Error fetching calendar data:', error);
+      throw new Error('Failed to get pemesanan calendar data');
     }
   }
 }
