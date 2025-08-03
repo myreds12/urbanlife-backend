@@ -18,11 +18,11 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 
-@UseGuards(JwtAuthGuard)
 @Controller('akomodasi')
 export class AkomodasiController {
   constructor(private readonly akomodasiService: AkomodasiService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Post()
   @UseInterceptors(FilesInterceptor('files'))
   create(
@@ -32,6 +32,7 @@ export class AkomodasiController {
     return this.akomodasiService.create(createAkomodasiDto, files);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get()
   findAll(@Query() query: QueryParamsDto) {
     return this.akomodasiService.findAll(query);
@@ -42,6 +43,7 @@ export class AkomodasiController {
     return this.akomodasiService.findOne(+id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @UseInterceptors(FilesInterceptor('files'))
   update(
@@ -52,6 +54,7 @@ export class AkomodasiController {
     return this.akomodasiService.update(+id, updateAkomodasiDto, files);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.akomodasiService.remove(+id);

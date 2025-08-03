@@ -37,6 +37,11 @@ export class PemesananController {
     return this.pemesananService.pemesananPerBulan(query);
   }
 
+  @Get('/get-filters')
+  getFilters() {
+    return this.pemesananService.getFilters();
+  }
+
   @Get('/get-by-date/:date')
   findByDate(@Param('date') date: string) {
     return this.pemesananService.getDetailByDate(date);

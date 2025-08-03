@@ -29,7 +29,7 @@ export class NegaraService {
 
   async findAll(query: QueryParamsDto) {
     try {
-      const { take, page } = query;
+      const { take, page, orderByMostItems } = query;
       const skip = page * take - take;
 
       // Ambil total negara
@@ -110,13 +110,26 @@ export class NegaraService {
       );
 
       // === Gabungkan semua ke dalam response ===
-      const dataWithCounts = negaraList.map(n => ({
-        ...n,
-        total_lokasi: lokasiByNegara[n.id] || 0,
-        total_kendaraan: kendaraanByNegara[n.id] || 0,
-        total_akomodasi: akomodasiByNegara[n.id] || 0,
-        total_travel_package: travelByNegara[n.id] || 0,
-      }));
+      // === Gabungkan semua ke dalam response ===
+      const dataWithCounts = negaraList.map(n => {
+        const total_kendaraan = kendaraanByNegara[n.id] || 0;
+        const total_akomodasi = akomodasiByNegara[n.id] || 0;
+        const total_travel_package = travelByNegara[n.id] || 0;
+
+        return {
+          ...n,
+          total_lokasi: lokasiByNegara[n.id] || 0,
+          total_kendaraan,
+          total_akomodasi,
+          total_travel_package,
+          total_all_items: total_kendaraan + total_akomodasi + total_travel_package,
+        };
+      });
+
+      // === Jika orderByMostItems, urutkan dari terbanyak ===
+      if (orderByMostItems) {
+        dataWithCounts.sort((a, b) => b.total_all_items - a.total_all_items);
+      }
 
       return {
         data: dataWithCounts,

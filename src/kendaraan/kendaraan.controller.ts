@@ -18,11 +18,11 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 
-@UseGuards(JwtAuthGuard)
 @Controller('kendaraan')
 export class KendaraanController {
   constructor(private readonly kendaraanService: KendaraanService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get('next-code')
   async nextCode() {
     const code = await this.kendaraanService.getCode();
@@ -32,6 +32,7 @@ export class KendaraanController {
     return { code: nextCode };
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post()
   @UseInterceptors(FilesInterceptor('files'))
   create(
@@ -41,6 +42,7 @@ export class KendaraanController {
     return this.kendaraanService.create(createKendaraanDto, files);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get()
   findAll(@Query() query: QueryParamsDto) {
     return this.kendaraanService.findAll(query);
@@ -51,6 +53,7 @@ export class KendaraanController {
     return this.kendaraanService.findOne(+id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @UseInterceptors(FilesInterceptor('files'))
   update(
@@ -61,6 +64,7 @@ export class KendaraanController {
     return this.kendaraanService.update(+id, updateKendaraanDto, files);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete()
   remove(@Body('ids') ids: number[]) {
     return this.kendaraanService.remove(ids);

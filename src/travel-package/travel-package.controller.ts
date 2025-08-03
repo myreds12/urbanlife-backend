@@ -18,11 +18,11 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 
-@UseGuards(JwtAuthGuard)
 @Controller('travel-package')
 export class TravelPackageController {
   constructor(private readonly travelPackageService: TravelPackageService) {}
 
+  @UseGuards(JwtAuthGuard)
   @Post()
   @UseInterceptors(FilesInterceptor('files'))
   create(
@@ -32,6 +32,7 @@ export class TravelPackageController {
     return this.travelPackageService.create(createTravelPackageDto, files);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get()
   findAll(@Query() query: QueryParamsDto) {
     return this.travelPackageService.findAll(query);
@@ -42,6 +43,7 @@ export class TravelPackageController {
     return this.travelPackageService.findOne(+id);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @UseInterceptors(FilesInterceptor('files'))
   update(
@@ -52,6 +54,7 @@ export class TravelPackageController {
     return this.travelPackageService.update(+id, updateTravelPackageDto, files);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Body('ids') ids: number[]) {
     return this.travelPackageService.remove(ids);

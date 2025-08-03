@@ -1,6 +1,15 @@
 /* eslint-disable prettier/prettier */
 import { Transform, Type } from 'class-transformer';
-import { IsDateString, IsIn, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class QueryParamsDto {
   @IsOptional()
@@ -8,6 +17,11 @@ export class QueryParamsDto {
   @Type(() => Number)
   @Transform(({ value }) => (value === 0 ? 100 : value))
   take?: number = 10;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  orderByMostItems?: boolean;
 
   @IsOptional()
   offset?: number;
@@ -71,4 +85,32 @@ export class QueryParamsDto {
   @IsString()
   @Transform(({ value }) => (value ? value.toLowerCase() : undefined))
   item_type?: string;
+
+  @IsOptional()
+  @IsArray()
+  @Type(() => Number)
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  negara_ids?: number[];
+
+  @IsOptional()
+  @IsArray()
+  @Type(() => Number)
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  lokasi_ids?: number[];
+
+  @IsOptional()
+  @IsArray()
+  @Type(() => String)
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  services?: string[]; // misalnya "WiFi", "Breakfast", dst
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  harga_min?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  harga_max?: number;
 }
