@@ -4,6 +4,7 @@ import { create, Whatsapp } from '@wppconnect-team/wppconnect';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PrismaService } from 'src/prisma/prisma.service';
+import * as puppeteer from 'puppeteer'; // pastikan terinstall
 
 @Injectable()
 export class WhatsappService {
@@ -14,34 +15,44 @@ export class WhatsappService {
   private readonly sessionStatus = new Map<string, boolean>();
 
   async connect(sessionId: string, user: { id: number }) {
-    if (this.clients.has(sessionId)) {
-      return {
-        session: sessionId,
-        qr: '',
-        status: this.sessionStatus.get(sessionId) ?? false,
-      };
+    const existingClient = this.clients.get(sessionId);
+
+    // ✅ Validasi ulang status sebenarnya (bukan hanya `has`)
+    if (existingClient) {
+      try {
+        const isConnected = await existingClient.isConnected();
+        if (isConnected) {
+          return {
+            session: sessionId,
+            qr: '',
+            status: true,
+          };
+        }
+      } catch (e) {
+        this.logger.warn(`⚠️ Sesi ${sessionId} ditemukan tapi tidak valid: ${e.message}`);
+        this.clients.delete(sessionId); // Clean up if invalid
+        this.sessionStatus.set(sessionId, false);
+      }
     }
 
+    // ✅ Lanjut ke setup baru
     const role = await this.prismaService.roles.findFirst({
       where: { name: 'Admin WhatsApp' },
       select: { id: true },
     });
 
-    if (!role) {
-      throw new Error('Role "Admin WhatsApp" tidak ditemukan');
-    }
+    if (!role) throw new Error('Role "Admin WhatsApp" tidak ditemukan');
 
     const userAdmin = await this.prismaService.user.findUnique({
       where: { id: user.id },
       select: { id: true, nama: true, nomor_hp: true },
     });
 
-    if (!userAdmin) {
-      throw new Error(`User dengan ID ${user.id} tidak ditemukan`);
-    }
+    if (!userAdmin) throw new Error(`User dengan ID ${user.id} tidak ditemukan`);
 
     return new Promise((resolve, reject) => {
       let qrResolved = false;
+      const browserPath = puppeteer.executablePath();
 
       create({
         session: sessionId,
@@ -62,15 +73,48 @@ export class WhatsappService {
           }
         },
         headless: true,
-        autoClose: 0,
         tokenStore: 'file',
         folderNameToken: './tokens',
-        browserArgs: ['--no-sandbox', '--disable-setuid-sandbox'],
+        autoClose: 0,
+        browserArgs: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-zygote',
+          '--disable-gpu',
+          '--single-process',
+        ],
+        puppeteerOptions: {
+          executablePath: browserPath,
+        },
       })
         .then(async client => {
           this.clients.set(sessionId, client);
           this.logger.log(`✅ Sesi ${sessionId} berhasil dimulai`);
 
+          // Ambil nomor WhatsApp yang sedang login
+          let waNumber: string;
+          try {
+            const me = await client.getWid();
+            waNumber = typeof me === 'string' ? me.split('@')[0] : 'UNKNOWN';
+          } catch (err) {
+            this.logger.warn('⚠️ Gagal mengambil nomor WhatsApp:', err.message);
+            waNumber = 'UNKNOWN';
+          }
+
+          // Update user jika belum punya nomor_hp
+          if ((!userAdmin.nomor_hp || userAdmin.nomor_hp === '') && waNumber !== 'UNKNOWN') {
+            await this.prismaService.user.update({
+              where: { id: user.id },
+              data: {
+                nomor_hp: waNumber,
+              },
+            });
+            this.logger.log(`📱 Nomor HP user ${user.id} diperbarui: ${waNumber}`);
+          }
+
+          // Create atau update adminWa
           const existing = await this.prismaService.adminWa.findFirst({
             where: { user_id: user.id },
           });
@@ -81,6 +125,7 @@ export class WhatsappService {
               data: {
                 session: sessionId,
                 is_active: true,
+                nomor_wa: waNumber,
               },
             });
           } else {
@@ -88,7 +133,7 @@ export class WhatsappService {
               data: {
                 user: { connect: { id: userAdmin.id } },
                 nama: userAdmin.nama,
-                nomor_wa: userAdmin.nomor_hp,
+                nomor_wa: waNumber,
                 session: sessionId,
                 is_active: true,
                 role: { connect: { id: role.id } },
