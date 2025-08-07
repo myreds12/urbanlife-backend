@@ -13,4 +13,7 @@ export class CreateAkomodasiRoomDto {
   @Type(() => Number)
   @IsNumber()
   harga: number;
+
+  @IsString()
+  temp_id: string;
 }

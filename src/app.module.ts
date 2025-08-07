@@ -20,6 +20,8 @@ import { DriverModule } from './driver/driver.module';
 import { NewsModule } from './news/news.module';
 import { NewsCategoryModule } from './news-category/news-category.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { CategoryModule } from './category/category.module';
+import { BlogModule } from './blog/blog.module';
 
 @Module({
   imports: [
@@ -42,6 +44,8 @@ import { ScheduleModule } from '@nestjs/schedule';
     DriverModule,
     NewsModule,
     NewsCategoryModule,
+    CategoryModule,
+    BlogModule,
   ],
   controllers: [AppController],
   providers: [AppService],

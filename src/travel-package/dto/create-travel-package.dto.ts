@@ -8,6 +8,10 @@ export class CreateTravelPackageDto {
   @IsInt()
   lokasi_id: number;
 
+  @Type(() => Number)
+  @IsInt()
+  category_id: number;
+
   @IsString()
   nama: string;
 
@@ -20,9 +24,8 @@ export class CreateTravelPackageDto {
   harga_anak: number;
 
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  durasi: number;
+  @IsString()
+  durasi: string;
 
   @Type(() => TravelPackageContentDto)
   @ValidateNested({ each: true })

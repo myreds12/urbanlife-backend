@@ -21,6 +21,7 @@ export class TravelPackageService {
         harga_anak,
         lokasi_id,
         travel_package_itinerary,
+        category_id,
       } = createTravelPackageDto;
 
       const lokasi = await this.prismaService.lokasi.findUnique({
@@ -32,6 +33,16 @@ export class TravelPackageService {
         throw new NotFoundException(
           `Lokasi dengan ID ${createTravelPackageDto.lokasi_id} tidak ditemukan`,
         );
+      }
+
+      if (category_id) {
+        const category = await this.prismaService.category.findUnique({
+          where: { id: category_id },
+          select: { id: true },
+        });
+        if (!category) {
+          throw new NotFoundException(`Category dengan ID ${category_id} tidak ditemukan`);
+        }
       }
 
       const travelPackageFiles = files.map(file => {
@@ -63,6 +74,9 @@ export class TravelPackageService {
           nama,
           harga_dewasa,
           harga_anak,
+          category: {
+            connect: { id: category_id },
+          },
           durasi,
           lokasi: {
             connect: { id: lokasi_id },

@@ -140,6 +140,7 @@ model Lokasi {
   travel_package TravelPackage[]
   akomodasi      Akomodasi[]
   kendaraan      Kendaraan[]
+  Blog           Blog[]
 }
 
 //TODO: DONE WITH ERROR IN UPDATE AND GET DETAILS DELETE
@@ -257,8 +258,9 @@ model PemabayaranFile {
 
 // TODO: DONE WITH ERROR IN UPDATE
 model TravelPackage {
-  id        Int @id @default(autoincrement())
-  lokasi_id Int
+  id          Int  @id @default(autoincrement())
+  lokasi_id   Int
+  category_id Int?
 
   nama        String @db.VarChar(250)
   tipe_durasi String @default("hari") @db.VarChar(250)
@@ -266,7 +268,7 @@ model TravelPackage {
   harga_dewasa Decimal @default(0)
   harga_anak   Decimal @default(0)
 
-  durasi Int? @default(1)
+  durasi String? @default("")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime?
@@ -277,6 +279,7 @@ model TravelPackage {
   pemesananPackage         PemesananPackage[]
   travelPackageFile        TravelPackageFile[]
   travel_package_itinerary TravelPackageItinerary[]
+  category                 Category?                @relation(fields: [category_id], references: [id])
 }
 
 model TravelPackageContent {
@@ -407,6 +410,7 @@ model AkomodasiRoomAndPrice {
 
   akomodasi     Akomodasi       @relation(fields: [akomodasi_id], references: [id])
   PemesananItem PemesananItem[]
+  AkomodasiFile AkomodasiFile[]
 }
 
 model AkomodasiFacilityGroup {
@@ -446,8 +450,11 @@ model AkomodasiContent {
 }
 
 model AkomodasiFile {
-  id           Int @id @default(autoincrement())
+  id           Int  @id @default(autoincrement())
   akomodasi_id Int
+  room_id      Int?
+
+  type Int @default(1)
 
   nama_file String @db.VarChar(250)
   url       String @db.VarChar(250)
@@ -455,7 +462,8 @@ model AkomodasiFile {
   createdAt DateTime  @default(now())
   updatedAt DateTime?
 
-  akomodasi Akomodasi @relation(fields: [akomodasi_id], references: [id])
+  akomodasi Akomodasi              @relation(fields: [akomodasi_id], references: [id])
+  room      AkomodasiRoomAndPrice? @relation(fields: [room_id], references: [id])
 }
 
 //DONE
@@ -516,6 +524,58 @@ model NewsCategory {
   createdAt DateTime  @default(now())
   updatedAt DateTime?
   News      News[]
+}
+
+model Blog {
+  id          Int    @id @default(autoincrement())
+  category_id Int?
+  lokasi_id   Int
+  slug        String @default("") @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  blog_category Category?     @relation(fields: [category_id], references: [id])
+  blog_file     BlogFile[]
+  blog_content  BlogContent[]
+
+  lokasi Lokasi @relation(fields: [lokasi_id], references: [id])
+}
+
+model BlogFile {
+  id        Int    @id @default(autoincrement())
+  blog_id   Int
+  nama_file String @db.VarChar(250)
+  url       String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  blog Blog @relation(fields: [blog_id], references: [id])
+}
+
+model BlogContent {
+  id      Int @id @default(autoincrement())
+  blog_id Int
+
+  judul     String @db.VarChar(250)
+  bahasa    String @default("INDONESIA") @db.VarChar(250)
+  deskripsi String @db.LongText
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+  blog      Blog      @relation(fields: [blog_id], references: [id])
+}
+
+model Category {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime?
+  TravelPackage TravelPackage[]
+  Blog          Blog[]
 }
 
 enum TipeKendaraan {

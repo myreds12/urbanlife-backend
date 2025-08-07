@@ -32,7 +32,7 @@ export class TravelPackageController {
     return this.travelPackageService.create(createTravelPackageDto, files);
   }
 
-  @UseGuards(JwtAuthGuard)
+  // @UseGuards(JwtAuthGuard)
   @Get()
   findAll(@Query() query: QueryParamsDto) {
     return this.travelPackageService.findAll(query);

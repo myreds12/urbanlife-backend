@@ -428,6 +428,7 @@ export class PemesananService {
         harga_max,
         services,
         type,
+        category_id,
       } = query;
 
       const skip = (Number(page) - 1) * Number(take);
@@ -599,6 +600,7 @@ export class PemesananService {
                 ...(bookedMap.has('TRAVEL_PACKAGE')
                   ? { id: { notIn: bookedMap.get('TRAVEL_PACKAGE')! } }
                   : {}),
+                ...(category_id ? { category_id } : {}),
                 ...buildLokasiFilter(),
                 ...buildHargaFilter('harga_dewasa'), // atau harga_anak
               },
@@ -610,6 +612,12 @@ export class PemesananService {
                 harga_anak: true,
                 harga_dewasa: true,
                 durasi: true,
+                category: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
                 lokasi: {
                   select: {
                     id: true,
@@ -721,7 +729,7 @@ export class PemesananService {
         nama: t.nama,
         harga_anak: Number(t.harga_anak),
         harga_dewasa: Number(t.harga_dewasa),
-        durasi_hari: t.durasi,
+        durasi: t.durasi,
         item_type: 'TRAVEL_PACKAGE',
         content: t.travel_package_content,
         itinerary: t.travel_package_itinerary,

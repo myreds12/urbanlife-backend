@@ -15,7 +15,7 @@ import { AkomodasiService } from './akomodasi.service';
 import { CreateAkomodasiDto } from './dto/create-akomodasi.dto';
 import { UpdateAkomodasiDto } from './dto/update-akomodasi.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 
 @Controller('akomodasi')
@@ -24,12 +24,21 @@ export class AkomodasiController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  @UseInterceptors(FilesInterceptor('files'))
-  create(
+  @UseInterceptors(AnyFilesInterceptor())
+  async create(
     @Body() createAkomodasiDto: CreateAkomodasiDto,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: Array<Express.Multer.File>,
   ) {
-    return this.akomodasiService.create(createAkomodasiDto, files);
+    console.log(files, 'files');
+    // Group files by fieldname (e.g., files, room_temp-a, room_temp-b)
+    const groupedFiles = {};
+    for (const file of files) {
+      if (!groupedFiles[file.fieldname]) {
+        groupedFiles[file.fieldname] = [];
+      }
+      groupedFiles[file.fieldname].push(file);
+    }
+    return this.akomodasiService.create(createAkomodasiDto, groupedFiles);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -45,13 +54,21 @@ export class AkomodasiController {
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  @UseInterceptors(FilesInterceptor('files'))
+  @UseInterceptors(AnyFilesInterceptor())
   update(
     @Param('id') id: string,
-    @Body() updateAkomodasiDto: UpdateAkomodasiDto,
     @UploadedFiles() files: Express.Multer.File[],
+    @Body() updateAkomodasiDto: UpdateAkomodasiDto,
   ) {
-    return this.akomodasiService.update(+id, updateAkomodasiDto, files);
+    const groupedFiles: { [fieldname: string]: Express.Multer.File[] } = {};
+    for (const file of files) {
+      if (!groupedFiles[file.fieldname]) {
+        groupedFiles[file.fieldname] = [];
+      }
+      groupedFiles[file.fieldname].push(file);
+    }
+
+    return this.akomodasiService.update(+id, updateAkomodasiDto, groupedFiles);
   }
 
   @UseGuards(JwtAuthGuard)
