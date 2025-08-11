@@ -578,6 +578,21 @@ model Category {
   Blog          Blog[]
 }
 
+model TemplateMessage {
+  id Int @id @default(autoincrement())
+
+  category String @default("notifikasi") @db.VarChar(250)
+  name     String @db.VarChar(250)
+
+  text_to_customer String @db.LongText
+  text_to_admin    String @db.LongText
+
+  is_active Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+}
+
 enum TipeKendaraan {
   mobil
   motor

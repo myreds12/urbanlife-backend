@@ -115,7 +115,6 @@ export class PemesananService {
       const durasiIds = pemesanan.pemesanan_item.map(i => i.durasi_id).filter(Boolean);
       const roomIds = pemesanan.pemesanan_item.map(i => i.room_id).filter(Boolean);
 
-      // Batch Fetch
       const [kendaraans, durasiKendaraan, akomodasiRooms, travelPackages] = await Promise.all([
         this.prismaService.kendaraan.findMany({
           where: { id: { in: itemIds } },
@@ -182,7 +181,7 @@ export class PemesananService {
 
       const adminWa = await this.prismaService.adminWa.findFirst({
         where: { is_active: true },
-        select: { session: true },
+        select: { session: true, nomor_wa: true },
       });
 
       if (!adminWa?.session) {
@@ -190,19 +189,37 @@ export class PemesananService {
         return;
       }
 
-      const message =
-        `Hi ${pemesanan.user.nama},\n\n` +
-        `Terima kasih telah mempercayakan perjalanan anda bersama urbanlife.id.\n\n` +
-        `Selesaikan pembayaran Order ID *${pemesanan.id}* untuk pemesanan berikut:\n\n` +
-        `${itemTexts.join('\n')}\n\n` +
-        `Total pembayaran:\nIDR ${Number(pemesanan.total_harga).toLocaleString('id-ID')}`;
+      const message = await this.prismaService.templateMessage.findFirst({
+        where: { is_active: true },
+        select: { text_to_customer: true, text_to_admin: true },
+      });
 
+      // ✅ Template pesan untuk customer
+      const customerText =
+        message?.text_to_customer ||
+        `Hi ${pemesanan.user.nama},\n\n` +
+          `Terima kasih telah mempercayakan perjalanan anda bersama urbanlife.id.\n\n` +
+          `Selesaikan pembayaran Order ID *${pemesanan.id}* untuk pemesanan berikut:\n\n` +
+          `${itemTexts.join('\n')}\n\n` +
+          `Total pembayaran:\nIDR ${Number(pemesanan.total_harga).toLocaleString('id-ID')}`;
+
+      // ✅ Kirim pesan ke customer
       await this.whatsappService.sendMessage(
         adminWa.session,
         pemesanan.user.nomor_hp,
-        message,
+        customerText,
         pemesananId,
       );
+
+      // ✅ Jika ada pesan untuk admin, kirim ke admin juga
+      if (message?.text_to_admin) {
+        await this.whatsappService.sendMessage(
+          adminWa.session,
+          adminWa.nomor_wa,
+          message.text_to_admin,
+          pemesananId,
+        );
+      }
     } catch (error) {
       this.logger.error(`❌ Gagal kirim pesan pemesanan WA: ${error.message}`);
     }

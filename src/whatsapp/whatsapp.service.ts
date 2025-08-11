@@ -5,6 +5,9 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PrismaService } from 'src/prisma/prisma.service';
 import * as puppeteer from 'puppeteer'; // pastikan terinstall
+import { CreateTemplateWhatsappDto } from './dto/create-template-whatsapp.dto';
+import { QueryParamsDto } from 'src/common/dto/query-params.dto';
+import { UpdateTemplateWhatsappDto } from './dto/update-template-whatsapp.dto';
 
 @Injectable()
 export class WhatsappService {
@@ -216,5 +219,90 @@ export class WhatsappService {
 
   isConnected(sessionId: string): boolean {
     return this.clients.has(sessionId) && this.sessionStatus.get(sessionId) === true;
+  }
+
+  async createTemplate(dto: CreateTemplateWhatsappDto) {
+    try {
+      const result = await this.prismaService.templateMessage.create({
+        data: {
+          name: dto.name,
+          category: dto.category,
+          text_to_admin: dto.text_to_admin,
+          text_to_customer: dto.text_to_customer,
+        },
+      });
+      return result;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+
+  async findAllTemplate(query: QueryParamsDto) {
+    try {
+      const { take, page } = query;
+      const skip = (page - 1) * take;
+      const count = await this.prismaService.templateMessage.count();
+      const result = await this.prismaService.templateMessage.findMany({
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+      });
+      return {
+        data: result,
+        meta: {
+          total: count,
+          page,
+          take,
+          takeTotal: result.length,
+        },
+      };
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+
+  async findOneTemplate(id: number) {
+    try {
+      const result = await this.prismaService.templateMessage.findUnique({
+        where: { id },
+      });
+      return result;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+
+  async updateTemplate(id: number, dto: UpdateTemplateWhatsappDto) {
+    try {
+      const result = await this.prismaService.templateMessage.update({
+        where: { id },
+        data: {
+          name: dto.name,
+          category: dto.category,
+          text_to_admin: dto.text_to_admin,
+          text_to_customer: dto.text_to_customer,
+          updatedAt: new Date(),
+        },
+      });
+      return result;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+
+  async deleteTemplate(id: number) {
+    try {
+      const result = await this.prismaService.templateMessage.delete({
+        where: { id },
+      });
+      return result;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 }
