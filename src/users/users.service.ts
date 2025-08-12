@@ -51,7 +51,7 @@ export class UsersService {
 
   async findOne(id: number) {
     try {
-      return this.prisma.user.findUnique({ where: { id } });
+      return this.prisma.user.findUnique({ where: { id }, include: { AdminWa: true } });
     } catch (error) {
       throw new Error('Error fetching user by id: ' + error.message);
     }

@@ -197,7 +197,29 @@ export class WhatsappService {
         return;
       }
 
-      const number = to.replace(/\D/g, '') + '@c.us';
+      const cleanNumber = to.replace(/\D/g, '');
+      const number = `${cleanNumber}@c.us`;
+
+      // ✅ Cek apakah nomor terdaftar di WhatsApp
+      const statusCheck = await client.checkNumberStatus(number);
+      const isValidNumber = statusCheck?.canReceiveMessage ?? false;
+
+      if (!isValidNumber) {
+        // ❌ Nomor tidak terdaftar → langsung simpan status "tidak terkirim"
+        await this.prismaService.notfikasiWa.create({
+          data: {
+            nomor_wa: to,
+            waktu_kirim: new Date(),
+            pesan: message,
+            pemesanan_id: Number(pemesanan_id),
+            status: 'tidak terkirim',
+          },
+        });
+        this.logger.warn(`⚠️ Nomor ${to} bukan nomor WhatsApp aktif`);
+        return { success: false, reason: 'Nomor tidak terdaftar di WhatsApp' };
+      }
+
+      // ✅ Nomor valid → kirim pesan
       const result = await client.sendText(number, message);
       if (result) {
         await this.prismaService.notfikasiWa.create({
@@ -206,12 +228,13 @@ export class WhatsappService {
             waktu_kirim: new Date(),
             pesan: message,
             pemesanan_id: Number(pemesanan_id),
+            status: 'terkirim',
           },
         });
       }
+
       return result;
     } catch (error) {
-      console.log(`❌ Gagal mengirim pesan: ${error}`);
       this.logger.error(`❌ Gagal mengirim pesan: ${error.message}`);
       throw error;
     }
@@ -288,6 +311,35 @@ export class WhatsappService {
         },
       });
       return result;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+
+  async findAllMessage(query: QueryParamsDto) {
+    try {
+      const { take, page, status } = query;
+      const skip = (page - 1) * take;
+      const count = await this.prismaService.notfikasiWa.count();
+      const where = {
+        ...(status && { status }),
+      };
+      const result = await this.prismaService.notfikasiWa.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+      });
+      return {
+        data: result,
+        meta: {
+          total: count,
+          page,
+          take,
+          takeTotal: result.length,
+        },
+      };
     } catch (error) {
       console.log(error);
       throw error;

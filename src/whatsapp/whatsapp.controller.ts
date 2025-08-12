@@ -33,6 +33,11 @@ export class WhatsappController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('message')
+  async findAllMessage(@Query() query: QueryParamsDto) {
+    return await this.whatsappService.findAllMessage(query);
+  }
+  @UseGuards(JwtAuthGuard)
   @Get('')
   async findAllTemplate(@Query() query: QueryParamsDto) {
     return await this.whatsappService.findAllTemplate(query);

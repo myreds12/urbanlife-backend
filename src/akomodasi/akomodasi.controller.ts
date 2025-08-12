@@ -41,7 +41,6 @@ export class AkomodasiController {
     return this.akomodasiService.create(createAkomodasiDto, groupedFiles);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get()
   findAll(@Query() query: QueryParamsDto) {
     return this.akomodasiService.findAll(query);

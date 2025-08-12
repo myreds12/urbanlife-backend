@@ -139,9 +139,13 @@ export class AkomodasiService {
 
   async findAll(query: QueryParamsDto) {
     try {
-      const { take, page } = query;
+      const { take, page, type } = query;
+      const where = {
+        ...(type && { kategori: type }),
+      };
       const count = await this.prismaService.akomodasi.count();
       const akomodasis = await this.prismaService.akomodasi.findMany({
+        where,
         skip: page * take - take,
         take: take > 0 ? take : undefined,
         orderBy: { createdAt: 'desc' },
@@ -157,6 +161,9 @@ export class AkomodasiService {
               id: true,
               nama: true,
               harga: true,
+              AkomodasiFile: {
+                select: { id: true, nama_file: true, url: true },
+              },
             },
           },
           akomodasi_facility_group: {
@@ -201,6 +208,9 @@ export class AkomodasiService {
               id: true,
               nama: true,
               harga: true,
+              AkomodasiFile: {
+                select: { id: true, nama_file: true, url: true },
+              },
             },
           },
           akomodasi_facility_group: {
