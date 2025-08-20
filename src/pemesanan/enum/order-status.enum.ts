@@ -1,6 +1,6 @@
 export enum OrderStatus {
   PENDINNG = 'PENDING',
   DIKONFIRMASI = 'DIKONFIRMASI',
-  SELESAI = 'SELESAI',
+  DONE = 'DONE',
   DIBATALKAN = 'DIBATALKAN',
 }

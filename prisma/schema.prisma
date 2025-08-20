@@ -16,7 +16,8 @@ model User {
   email    String
   password String
   nomor_hp String
-  gender   String @default("Laki - laki") @db.VarChar(50)
+  profile  String? @db.VarChar(250)
+  gender   String  @default("Male") @db.VarChar(50)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime?
@@ -31,6 +32,7 @@ model User {
 model Kendaraan {
   id        Int  @id @default(autoincrement())
   lokasi_id Int?
+  driver_id Int?
 
   nama                   String    @db.VarChar(250)
   model                  String?   @db.VarChar(250)
@@ -40,13 +42,15 @@ model Kendaraan {
   tanggal_pajak_berakhir DateTime? @db.DateTime()
   harga                  Decimal   @default(0)
 
-  status_pajak Boolean @default(false)
-  status       Boolean @default(true)
+  status_pajak   Boolean @default(false)
+  status         Boolean @default(true)
+  top_attraction Boolean @default(true)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime?
 
   lokasi Lokasi? @relation(fields: [lokasi_id], references: [id])
+  driver Driver? @relation(fields: [driver_id], references: [id])
 
   kendaraan_content KendaraanContent[]
   kendaraan_file    KendaaranFile[]
@@ -104,8 +108,9 @@ model Driver {
 
   tanggal_periode_berakhir DateTime? @db.DateTime()
 
-  createdAt DateTime  @default(now())
+  createdAt DateTime    @default(now())
   updatedAt DateTime?
+  Kendaraan Kendaraan[]
 }
 
 model Guide {
@@ -120,8 +125,9 @@ model Guide {
 
   fluent_english Boolean @default(false)
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime?
+  TravelPackage TravelPackage[]
 }
 
 model Lokasi {
@@ -261,6 +267,7 @@ model TravelPackage {
   id          Int  @id @default(autoincrement())
   lokasi_id   Int
   category_id Int?
+  guide_id    Int?
 
   nama        String @db.VarChar(250)
   tipe_durasi String @default("hari") @db.VarChar(250)
@@ -270,16 +277,19 @@ model TravelPackage {
 
   durasi String? @default("")
 
+  top_attraction Boolean @default(true)
+
   createdAt DateTime  @default(now())
   updatedAt DateTime?
 
-  lokasi Lokasi @relation(fields: [lokasi_id], references: [id])
+  lokasi   Lokasi    @relation(fields: [lokasi_id], references: [id])
+  category Category? @relation(fields: [category_id], references: [id])
+  guide    Guide?    @relation(fields: [guide_id], references: [id])
 
   travel_package_content   TravelPackageContent[]
   pemesananPackage         PemesananPackage[]
   travelPackageFile        TravelPackageFile[]
   travel_package_itinerary TravelPackageItinerary[]
-  category                 Category?                @relation(fields: [category_id], references: [id])
 }
 
 model TravelPackageContent {
@@ -386,7 +396,8 @@ model Akomodasi {
   kategori String @db.VarChar(250)
   tipe     String @default("hotel") @db.VarChar(250)
 
-  status Boolean @default(true)
+  top_attraction Boolean @default(true)
+  status         Boolean @default(true)
 
   harga Decimal @default(0)
 
@@ -419,6 +430,8 @@ model AkomodasiFacilityGroup {
   nama         String    @db.VarChar(250) // e.g., "Deluxe"
   createdAt    DateTime  @default(now())
   updatedAt    DateTime?
+
+  type Int @default(1)
 
   akomodasi Akomodasi           @relation(fields: [akomodasi_id], references: [id])
   fasilitas AkomodasiFacility[]

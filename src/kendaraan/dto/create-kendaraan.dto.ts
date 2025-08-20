@@ -1,5 +1,6 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsNumber,
@@ -22,6 +23,11 @@ export class CreateKendaraanDto {
   @IsNumber()
   lokasi_id?: number;
 
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  driver_id?: number;
+
   @IsString()
   nama: string;
 
@@ -34,6 +40,11 @@ export class CreateKendaraanDto {
   model?: string;
 
   status_pajak: string;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  top_attraction?: boolean;
 
   @IsOptional()
   @IsEnum(VehicleType)

@@ -1,5 +1,6 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsEnum,
   IsInt,
   IsNotEmpty,
@@ -35,6 +36,11 @@ export class CreateAkomodasiDto {
 
   @IsOptional()
   status?: boolean = false;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  top_attraction?: boolean;
 
   @Type(() => AkomodasiContentDto)
   @ValidateNested({ each: true })

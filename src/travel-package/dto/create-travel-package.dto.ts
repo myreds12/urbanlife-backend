@@ -12,6 +12,10 @@ export class CreateTravelPackageDto {
   @IsInt()
   category_id: number;
 
+  @Type(() => Number)
+  @IsInt()
+  guide_id: number;
+
   @IsString()
   nama: string;
 
@@ -26,6 +30,10 @@ export class CreateTravelPackageDto {
   @IsOptional()
   @IsString()
   durasi: string;
+
+  @IsOptional()
+  @IsString()
+  top_attraction?: string;
 
   @Type(() => TravelPackageContentDto)
   @ValidateNested({ each: true })

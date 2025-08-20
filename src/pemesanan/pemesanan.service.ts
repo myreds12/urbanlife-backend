@@ -446,6 +446,7 @@ export class PemesananService {
         services,
         type,
         category_id,
+        top_attraction,
       } = query;
 
       const skip = (Number(page) - 1) * Number(take);
@@ -502,6 +503,7 @@ export class PemesananService {
               where: {
                 status: true,
                 status_pajak: true,
+                ...(top_attraction ? { top_attraction: true } : {}),
                 ...(bookedMap.has('KENDARAAN')
                   ? { id: { notIn: bookedMap.get('KENDARAAN')! } }
                   : {}),
@@ -548,6 +550,8 @@ export class PemesananService {
           ? this.prismaService.akomodasi.findMany({
               where: {
                 status: true,
+                ...(top_attraction ? { top_attraction: true } : {}),
+
                 ...(bookedMap.has('AKOMODASI')
                   ? { id: { notIn: bookedMap.get('AKOMODASI')! } }
                   : {}),
@@ -614,6 +618,7 @@ export class PemesananService {
         fetchTravel
           ? this.prismaService.travelPackage.findMany({
               where: {
+                ...(top_attraction ? { top_attraction: true } : {}),
                 ...(bookedMap.has('TRAVEL_PACKAGE')
                   ? { id: { notIn: bookedMap.get('TRAVEL_PACKAGE')! } }
                   : {}),

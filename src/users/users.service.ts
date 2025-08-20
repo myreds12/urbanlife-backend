@@ -1,25 +1,35 @@
 /* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(data: {
-    nama: string;
-    email: string;
-    nomor_hp: string;
-    password: string;
-    role_id: number;
-  }) {
+  async create(
+    data: {
+      nama: string;
+      email: string;
+      nomor_hp: string;
+      password: string;
+      role_id: number;
+    },
+    file: Express.Multer.File,
+  ) {
     try {
+      if (!file) {
+        throw new Error('File is required');
+      }
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+
       return await this.prisma.user.create({
         data: {
+          profile: file.path,
           nama: data.nama,
           email: data.email,
           nomor_hp: data.nomor_hp,
-          password: data.password,
+          password: hashedPassword,
           role: {
             connect: { id: data.role_id },
           },
@@ -57,10 +67,25 @@ export class UsersService {
     }
   }
 
-  async update(id: number, data: any) {
+  async update(id: number, data: any, file?: Express.Multer.File) {
     try {
-      return this.prisma.user.update({ where: { id }, data });
+      const hashedPassword = data.password ? await bcrypt.hash(data.password, 10) : undefined;
+      const updatedUser = await this.prisma.user.update({
+        where: { id },
+        data: {
+          nama: data.nama,
+          email: data.email,
+          nomor_hp: data.nomor_hp,
+          password: hashedPassword,
+          profile: file ? file.path : undefined,
+          role: data.role_id ? { connect: { id: Number(data.role_id) } } : undefined,
+        },
+      });
+      console.log('User updated successfully:', updatedUser);
+      return updatedUser;
     } catch (error) {
+      console.log('ERROR BOS');
+      console.log(error);
       throw new Error('Error updating user: ' + error.message);
     }
   }
@@ -71,5 +96,16 @@ export class UsersService {
     } catch (error) {
       throw new Error('Error deleting user: ' + error.message);
     }
+  }
+
+  async resetPassword(id: number, data: { new_password: string; confirm_password: string }) {
+    if (data.new_password !== data.confirm_password) {
+      throw new Error('Passwords do not match');
+    }
+    const hashedPassword = await bcrypt.hash(data.new_password, 10);
+    return this.prisma.user.update({
+      where: { id },
+      data: { password: hashedPassword },
+    });
   }
 }

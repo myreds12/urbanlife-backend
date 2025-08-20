@@ -39,10 +39,13 @@ export class AuthService {
   async register(data: RegisterDto) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    return this.usersService.create({
-      ...data,
-      password: hashedPassword,
-    });
+    return this.usersService.create(
+      {
+        ...data,
+        password: hashedPassword,
+      },
+      undefined,
+    );
   }
 
   async generateJwt(user: User, secret: any, expired = JwtConfig.user_expired, roleUser: string) {

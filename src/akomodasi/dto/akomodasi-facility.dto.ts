@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, IsString, Validate, ValidateNested } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, Validate, ValidateNested } from 'class-validator';
 
 export class CreateAkomodasiFacilityDto {
   @IsOptional()
@@ -16,6 +16,10 @@ export class CreateAkomodasiFacilityGroupDto {
   @Type(() => Number)
   @IsNumber()
   id?: number;
+
+  @Type(() => Number)
+  @IsEnum([1, 2])
+  type?: 1 | 2;
 
   @IsString()
   nama: string;

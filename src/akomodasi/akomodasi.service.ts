@@ -10,11 +10,11 @@ export class AkomodasiService {
   async create(dto: CreateAkomodasiDto, files: Record<string, Express.Multer.File[]>) {
     try {
       const { akomodasi_content, akomodasi_facility, akomodasi_room, ...data } = dto;
-
       // 1. Buat Akomodasi
       const akomodasi = await this.prismaService.akomodasi.create({
         data: {
           ...data,
+          top_attraction: data.top_attraction !== undefined ? Boolean(data.top_attraction) : true,
           harga: '0',
         },
       });
@@ -53,6 +53,7 @@ export class AkomodasiService {
           data: {
             akomodasi_id: akomodasi.id,
             nama: group.nama,
+            type: group.type || 1,
           },
         });
 
@@ -201,7 +202,7 @@ export class AkomodasiService {
             select: { id: true, deskripsi: true, bahasa: true, informasi: true, kebijakan: true },
           },
           akomodasi_file: {
-            select: { id: true, nama_file: true, url: true },
+            select: { id: true, nama_file: true, url: true, type: true, room_id: true },
           },
           akomodasi_room_and_price: {
             select: {
@@ -217,6 +218,7 @@ export class AkomodasiService {
             select: {
               id: true,
               nama: true,
+              type: true,
               fasilitas: {
                 select: { id: true, nama: true, facility_group_id: true },
               },
@@ -247,6 +249,7 @@ export class AkomodasiService {
         akomodasi_facility,
         akomodasi_room,
         status,
+        top_attraction,
         tipe,
       } = updateAkomodasiDto;
 
@@ -297,6 +300,7 @@ export class AkomodasiService {
           data: {
             nama,
             kategori,
+            ...(top_attraction !== undefined ? { top_attraction: Boolean(top_attraction) } : {}),
             ...(status !== undefined ? { status: Boolean(status) } : {}),
             tipe,
             lokasi: { connect: { id: lokasi_id } },
@@ -363,8 +367,8 @@ export class AkomodasiService {
 
         // 🖼️ Upload room file (type 2) berdasarkan temp_id → roomId
         for (const key of Object.keys(files)) {
-          if (key.startsWith('room_temp-')) {
-            const tempId = key.replace('room_temp-', '');
+          if (key.startsWith('room_')) {
+            const tempId = key.replace('room_', '');
             const roomId = roomMap[tempId];
             if (!roomId) continue;
 
@@ -399,12 +403,13 @@ export class AkomodasiService {
           if (groupId) {
             await tx.akomodasiFacilityGroup.update({
               where: { id: groupId },
-              data: { nama: group.nama },
+              data: { nama: group.nama, type: group.type || 1 },
             });
           } else {
             const createdGroup = await tx.akomodasiFacilityGroup.create({
               data: {
                 nama: group.nama,
+                type: group.type || 1,
                 akomodasi: { connect: { id } },
               },
             });

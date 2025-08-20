@@ -22,7 +22,20 @@ export class TravelPackageService {
         lokasi_id,
         travel_package_itinerary,
         category_id,
+        guide_id,
+        top_attraction,
       } = createTravelPackageDto;
+
+      //validasi guide
+      if (guide_id) {
+        const guide = await this.prismaService.guide.findUnique({
+          where: { id: guide_id },
+          select: { id: true },
+        });
+        if (!guide) {
+          throw new NotFoundException(`Guide dengan ID ${guide_id} tidak ditemukan`);
+        }
+      }
 
       const lokasi = await this.prismaService.lokasi.findUnique({
         where: { id: lokasi_id },
@@ -74,12 +87,16 @@ export class TravelPackageService {
           nama,
           harga_dewasa,
           harga_anak,
+          top_attraction: top_attraction ? Boolean(top_attraction) : true,
           category: {
             connect: { id: category_id },
           },
           durasi,
           lokasi: {
             connect: { id: lokasi_id },
+          },
+          guide: {
+            connect: { id: guide_id },
           },
           ...(travel_package_content && {
             travel_package_content: {
@@ -184,6 +201,16 @@ export class TravelPackageService {
               },
             },
           },
+          guide: {
+            select: {
+              id: true,
+              nama: true,
+              fluent_english: true,
+              gender: true,
+              nomor_hp: true,
+              tanggal_periode_berakhir: true,
+            },
+          },
           travel_package_content: {
             select: {
               id: true,
@@ -226,6 +253,16 @@ export class TravelPackageService {
                   nama: true,
                 },
               },
+            },
+          },
+          guide: {
+            select: {
+              id: true,
+              nama: true,
+              fluent_english: true,
+              gender: true,
+              nomor_hp: true,
+              tanggal_periode_berakhir: true,
             },
           },
           travel_package_content: {
@@ -272,6 +309,8 @@ export class TravelPackageService {
         durasi,
         lokasi_id,
         travel_package_content,
+        top_attraction,
+        category_id,
         travel_package_itinerary,
       } = updateTravelPackageDto;
 
@@ -363,6 +402,12 @@ export class TravelPackageService {
             nama,
             harga_anak,
             harga_dewasa,
+            top_attraction: top_attraction ? Boolean(top_attraction) : true,
+            ...(category_id && {
+              category: {
+                connect: { id: category_id },
+              },
+            }),
             durasi,
             ...(lokasi_id && { lokasi: { connect: { id: lokasi_id } } }),
             ...(upsertContent.length && {

@@ -24,6 +24,16 @@ export class QueryParamsDto {
   orderByMostItems?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  top_attraction?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  is_rent?: boolean;
+
+  @IsOptional()
   offset?: number;
 
   @IsOptional()

@@ -21,15 +21,25 @@ export class KendaraanService {
         kapasitas,
         harga,
         lokasi_id,
+        driver_id,
         content,
         status_pajak,
+        top_attraction,
         model,
         tanggal_pajak_berakhir,
         durasi,
       } = createKendaraanDto;
 
-      // Validasi lokasi
+      // Validasi driver
+      if (driver_id) {
+        const driver = await this.prismaService.driver.findUnique({
+          where: { id: driver_id },
+          select: { id: true },
+        });
+        if (!driver) throw new NotFoundException(`Driver dengan ID ${driver_id} tidak ditemukan`);
+      }
 
+      // Validasi lokasi
       if (lokasi_id) {
         const lokasi = await this.prismaService.lokasi.findUnique({
           where: { id: lokasi_id },
@@ -62,10 +72,12 @@ export class KendaraanService {
         tipe,
         plat_nomor,
         kapasitas,
+        top_attraction: top_attraction ? Boolean(top_attraction) : true,
         harga,
         model,
         tanggal_pajak_berakhir: tanggal_pajak_berakhir ? new Date(tanggal_pajak_berakhir) : null,
         status_pajak: status_pajak ? Boolean(status_pajak) : undefined,
+        ...(driver_id && { driver: { connect: { id: driver_id } } }),
         ...(lokasi_id && { lokasi: { connect: { id: lokasi_id } } }),
         ...(kendaraanContent.length && {
           kendaraan_content: { createMany: { data: kendaraanContent } },
@@ -102,7 +114,7 @@ export class KendaraanService {
 
   async findAll(query: QueryParamsDto) {
     try {
-      const { take, page, search } = query;
+      const { take, page, search, is_rent } = query;
       const skip = page * take - take;
       const count = await this.prismaService.kendaraan.count();
 
@@ -132,6 +144,34 @@ export class KendaraanService {
             {
               kapasitas: {
                 contains: search,
+              },
+            },
+          ],
+        }),
+        ...(is_rent === false && {
+          AND: [
+            {
+              kendaraan_content: {
+                none: {}, // Tidak ada kendaraan_content
+              },
+            },
+            {
+              kendaraan_durasi: {
+                none: {}, // Tidak ada kendaraan_durasi
+              },
+            },
+          ],
+        }),
+        ...(is_rent === true && {
+          OR: [
+            {
+              kendaraan_content: {
+                some: {}, // Ada setidaknya satu kendaraan_content
+              },
+            },
+            {
+              kendaraan_durasi: {
+                some: {}, // Ada setidaknya satu kendaraan_durasi
               },
             },
           ],
@@ -183,6 +223,7 @@ export class KendaraanService {
         },
       };
     } catch (error) {
+      console.log(error);
       throw error;
     }
   }
@@ -231,6 +272,7 @@ export class KendaraanService {
 
       const {
         lokasi_id,
+        driver_id,
         nama,
         tipe,
         plat_nomor,
@@ -239,9 +281,19 @@ export class KendaraanService {
         content,
         durasi,
         model,
+        top_attraction,
         status_pajak,
         tanggal_pajak_berakhir,
       } = dto;
+      // Validasi driver jika diberikan
+      if (driver_id) {
+        const driver = await this.prismaService.driver.findUnique({
+          where: { id: driver_id },
+          select: { id: true },
+        });
+        if (!driver) throw new NotFoundException(`Driver dengan ID ${driver_id} tidak ditemukan`);
+      }
+
       // ✅ Validasi lokasi jika diberikan
       if (lokasi_id) {
         const lokasi = await this.prismaService.lokasi.findUnique({
@@ -300,9 +352,11 @@ export class KendaraanService {
         kapasitas,
         harga,
         model,
+        top_attraction: top_attraction ? Boolean(top_attraction) : true,
         status_pajak: status_pajak ? Boolean(status_pajak) : undefined,
         tanggal_pajak_berakhir: tanggal_pajak_berakhir ? new Date(tanggal_pajak_berakhir) : null,
-        ...(lokasi_id && { lokasi_id }),
+        ...(driver_id && { driver: { connect: { id: driver_id } } }),
+        ...(lokasi_id && { lokasi: { connect: { id: lokasi_id } } }),
         ...(contentUpserts.length && {
           kendaraan_content: { upsert: contentUpserts },
         }),
