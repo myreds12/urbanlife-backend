@@ -29,6 +29,20 @@ model User {
   AdminWa           AdminWa[]
 }
 
+model Testimonial {
+  id           Int     @id @default(autoincrement())
+  pemesanan_id Int?
+  nama         String  @db.VarChar(250)
+  pekerjaan    String  @db.VarChar(250)
+  deskripsi    String  @db.LongText
+  is_active    Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  pemesanan Pemesanan? @relation(fields: [pemesanan_id], references: [id])
+}
+
 model Kendaraan {
   id        Int  @id @default(autoincrement())
   lokasi_id Int?
@@ -45,6 +59,7 @@ model Kendaraan {
   status_pajak   Boolean @default(false)
   status         Boolean @default(true)
   top_attraction Boolean @default(true)
+  is_popular     Boolean @default(false)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime?
@@ -188,6 +203,7 @@ model Pemesanan {
   type        String? @db.VarChar(50)
 
   deskripsi String? @db.LongText
+  notes     String? @db.LongText
 
   createdAt DateTime  @default(now())
   updatedAt DateTime?
@@ -197,6 +213,141 @@ model Pemesanan {
   pembayaran     Pembayaran[]
   notifikasi_wa  NotfikasiWa[]
   pemesanan_item PemesananItem[]
+  Testimonial    Testimonial[]
+}
+
+model HeroSection {
+  id Int @id @default(autoincrement())
+
+  title     String @db.VarChar(250)
+  url       String @db.VarChar(250)
+  nama_file String @db.VarChar(250)
+
+  status Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+}
+
+model ServiceSchedule {
+  id Int @id @default(autoincrement())
+
+  hari     String @db.VarChar(50)
+  jam_buka String @db.VarChar(100)
+
+  is_special_day Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+}
+
+model AboutUs {
+  id Int @id @default(autoincrement())
+
+  title_en   String @db.VarChar(250)
+  title_id   String @db.VarChar(250)
+  content_en String @db.LongText
+  content_id String @db.LongText
+
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime?
+  is_published        Boolean               @default(true)
+  AboutUsStory        AboutUsStory?
+  AboutUsServices     AboutUsServices[]
+  AboutUsAchievements AboutUsAchievements[]
+  AboutUsFile         AboutUsFile[]
+  AboutUsOperational  AboutUsOperational[]
+  AboutUsCta          AboutUsCta?
+}
+
+model AboutUsCta {
+  id          Int @id @default(autoincrement())
+  about_us_id Int @unique
+
+  title_en       String @db.VarChar(250)
+  title_id       String @db.VarChar(250)
+  description_en String @db.LongText
+  description_id String @db.LongText
+
+  button_text String @db.VarChar(250)
+  button_url  String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+  about_us  AboutUs   @relation(fields: [about_us_id], references: [id])
+}
+
+model AboutUsOperational {
+  id          Int @id @default(autoincrement())
+  about_us_id Int
+
+  day  String @db.VarChar(50)
+  time String @db.VarChar(100)
+
+  is_highlight Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+  about_us  AboutUs   @relation(fields: [about_us_id], references: [id])
+}
+
+model AboutUsStory {
+  id Int @id @default(autoincrement())
+
+  title_en   String @db.VarChar(250)
+  title_id   String @db.VarChar(250)
+  content_en String @db.LongText
+  content_id String @db.LongText
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  about_us_id Int     @unique
+  about_us    AboutUs @relation(fields: [about_us_id], references: [id])
+}
+
+model AboutUsServices {
+  id          Int @id @default(autoincrement())
+  about_us_id Int
+
+  title_en   String @db.VarChar(250)
+  title_id   String @db.VarChar(250)
+  content_en String @db.LongText
+  content_id String @db.LongText
+
+  icon     String? @db.VarChar(250)
+  location String? @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+  about_us  AboutUs   @relation(fields: [about_us_id], references: [id])
+}
+
+model AboutUsAchievements {
+  id Int @id @default(autoincrement())
+
+  number     String @db.VarChar(250)
+  content_en String @db.LongText
+  content_id String @db.LongText
+
+  icon String? @db.VarChar(250)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime?
+  about_us_id Int
+  about_us    AboutUs   @relation(fields: [about_us_id], references: [id])
+}
+
+model AboutUsFile {
+  id          Int @id @default(autoincrement())
+  about_us_id Int
+
+  nama_file String @db.VarChar(250)
+  url       String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+  about_us  AboutUs   @relation(fields: [about_us_id], references: [id])
 }
 
 model PemesananItem {
@@ -278,6 +429,7 @@ model TravelPackage {
   durasi String? @default("")
 
   top_attraction Boolean @default(true)
+  is_popular     Boolean @default(false)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime?
@@ -398,6 +550,7 @@ model Akomodasi {
 
   top_attraction Boolean @default(true)
   status         Boolean @default(true)
+  is_popular     Boolean @default(false)
 
   harga Decimal @default(0)
 

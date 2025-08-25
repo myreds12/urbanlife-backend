@@ -18,6 +18,7 @@ import { User } from '@prisma/client';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
+import { PemesananKendaraanDto } from './dto/pemesanan-kendaraan-update.dto';
 
 interface UserRequest extends IExpressRequest {
   user: User;
@@ -26,6 +27,11 @@ interface UserRequest extends IExpressRequest {
 @Controller('pemesanan')
 export class PemesananController {
   constructor(private readonly pemesananService: PemesananService) {}
+
+  @Patch('/update-kendaraan/:id')
+  updateKendaraanItem(@Param('id') id: number, @Body() data: PemesananKendaraanDto) {
+    return this.pemesananService.updateKendaraan(id, data);
+  }
 
   @Get('/total')
   totalPemsanan() {

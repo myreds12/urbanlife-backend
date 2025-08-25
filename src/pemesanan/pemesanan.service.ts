@@ -1,25 +1,20 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreatePemesananDto } from './dto/create-pemesanan.dto';
 import { UpdatePemesananDto } from './dto/update-pemesanan.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma, User } from '@prisma/client';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 import * as bcrypt from 'bcrypt';
-import { WhatsappService } from 'src/whatsapp/whatsapp.service';
-import {
-  differenceInCalendarDays,
-  eachDayOfInterval,
-  endOfMonth,
-  format,
-  startOfMonth,
-  subMonths,
-} from 'date-fns'; // pastikan di-import
+import { eachDayOfInterval, endOfMonth, format, startOfMonth, subMonths } from 'date-fns'; // pastikan di-import
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { PemesananKendaraanDto } from './dto/pemesanan-kendaraan-update.dto';
 
 @Injectable()
 export class PemesananService {
   constructor(
     private readonly prismaService: PrismaService,
-    private readonly whatsappService: WhatsappService,
+    @InjectQueue('pemesanan-processing') private readonly pemesananQueue: Queue,
   ) {}
   private readonly logger = new Logger(PemesananService.name);
 
@@ -63,7 +58,7 @@ export class PemesananService {
         tanggal_selesai: item.tanggal_selesai ? new Date(item.tanggal_selesai) : undefined,
       })) ?? [];
 
-    // Step 2: Create Pemesanan (pakai id)
+    // Step 2: Create Pemesanan
     const pemesanan = await this.prismaService.pemesanan.create({
       data: {
         type,
@@ -71,7 +66,7 @@ export class PemesananService {
         deskripsi,
         total_harga,
         user: {
-          connect: { id: createdUser.id }, // ✅ id pasti valid & unique
+          connect: { id: createdUser.id },
         },
         pemesanan_item: {
           createMany: {
@@ -88,141 +83,38 @@ export class PemesananService {
             nomor_hp: true,
           },
         },
+        pemesanan_item: true,
       },
     });
 
-    // Jalankan sendMessage async
-    this.sendPemesananMessage(pemesanan.id).catch(e =>
-      this.logger.error(`❌ Gagal kirim pesan pemesanan WA: ${e.message}`),
+    // Step 3: Add to Bull Queue untuk background processing
+    await this.pemesananQueue.add(
+      'process-order',
+      {
+        orderId: pemesanan.id,
+        customerEmail: pemesanan.user.email,
+        customerPhone: pemesanan.user.nomor_hp,
+        customerName: pemesanan.user.nama,
+        orderDetails: {
+          id: pemesanan.id,
+          total_harga: pemesanan.total_harga,
+          type: pemesanan.type,
+          items: pemesanan.pemesanan_item,
+        },
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: 'exponential',
+          delay: 5000,
+        },
+        timeout: 30000,
+      },
     );
 
+    this.logger.log(`Pemesanan ${pemesanan.id} ditambahkan ke queue`);
+
     return pemesanan;
-  }
-
-  async sendPemesananMessage(pemesananId: number) {
-    try {
-      const pemesanan = await this.prismaService.pemesanan.findUnique({
-        where: { id: pemesananId },
-        include: {
-          user: true,
-          pemesanan_item: true,
-        },
-      });
-
-      if (!pemesanan) throw new Error(`Pemesanan ID ${pemesananId} tidak ditemukan`);
-
-      const itemIds = pemesanan.pemesanan_item.map(i => i.item_id);
-      const durasiIds = pemesanan.pemesanan_item.map(i => i.durasi_id).filter(Boolean);
-      const roomIds = pemesanan.pemesanan_item.map(i => i.room_id).filter(Boolean);
-
-      const [kendaraans, durasiKendaraan, akomodasiRooms, travelPackages] = await Promise.all([
-        this.prismaService.kendaraan.findMany({
-          where: { id: { in: itemIds } },
-          select: { id: true, nama: true },
-        }),
-        this.prismaService.kendaraanDurasi.findMany({
-          where: { id: { in: durasiIds as number[] } },
-          select: { id: true, durasi: true },
-        }),
-        this.prismaService.akomodasiRoomAndPrice.findMany({
-          where: { id: { in: roomIds as number[] } },
-          include: { akomodasi: { select: { nama: true } } },
-        }),
-        this.prismaService.travelPackage.findMany({
-          where: { id: { in: itemIds } },
-          select: { id: true, nama: true },
-        }),
-      ]);
-
-      const kendaraanMap = new Map(kendaraans.map(k => [k.id, k.nama]));
-      const durasiMap = new Map(durasiKendaraan.map(d => [d.id, d.durasi]));
-      const roomMap = new Map(akomodasiRooms.map(r => [r.id, r]));
-      const travelMap = new Map(travelPackages.map(t => [t.id, t.nama]));
-
-      const itemTexts = pemesanan.pemesanan_item.map(item => {
-        let namaItem = '';
-        let durasi = '-';
-
-        const tanggalMulai = item.tanggal_mulai ? new Date(item.tanggal_mulai) : null;
-        const tanggalSelesai = item.tanggal_selesai ? new Date(item.tanggal_selesai) : null;
-        const diff =
-          tanggalMulai && tanggalSelesai
-            ? differenceInCalendarDays(tanggalSelesai, tanggalMulai)
-            : null;
-
-        switch (item.item_type) {
-          case 'KENDARAAN':
-            namaItem = kendaraanMap.get(item.item_id) ?? 'Kendaraan';
-            durasi =
-              item.durasi_hari != null
-                ? `${item.durasi_hari} hari`
-                : item.durasi_id
-                  ? `${durasiMap.get(item.durasi_id) ?? '-'}`
-                  : '-';
-            break;
-
-          case 'TRAVEL_PACKAGE':
-            namaItem = travelMap.get(item.item_id) ?? 'Travel Package';
-            durasi = diff !== null ? `${diff} hari` : '-';
-            break;
-
-          case 'AKOMODASI':
-            const room = roomMap.get(item.room_id ?? 0);
-            namaItem = `${room?.akomodasi?.nama ?? 'Akomodasi'} - ${room?.nama ?? 'Room'}`;
-            durasi = diff !== null ? `${diff} hari` : '-';
-            break;
-
-          default:
-            namaItem = 'Item tidak dikenali';
-        }
-
-        return `• ${namaItem} (durasi ${durasi})`;
-      });
-
-      const adminWa = await this.prismaService.adminWa.findFirst({
-        where: { is_active: true },
-        select: { session: true, nomor_wa: true },
-      });
-
-      if (!adminWa?.session) {
-        this.logger.warn('⚠️ Tidak ada session WhatsApp admin yang aktif.');
-        return;
-      }
-
-      const message = await this.prismaService.templateMessage.findFirst({
-        where: { is_active: true },
-        select: { text_to_customer: true, text_to_admin: true },
-      });
-
-      // ✅ Template pesan untuk customer
-      const customerText =
-        message?.text_to_customer ||
-        `Hi ${pemesanan.user.nama},\n\n` +
-          `Terima kasih telah mempercayakan perjalanan anda bersama urbanlife.id.\n\n` +
-          `Selesaikan pembayaran Order ID *${pemesanan.id}* untuk pemesanan berikut:\n\n` +
-          `${itemTexts.join('\n')}\n\n` +
-          `Total pembayaran:\nIDR ${Number(pemesanan.total_harga).toLocaleString('id-ID')}`;
-
-      // ✅ Kirim pesan ke customer
-      await this.whatsappService.sendMessage(
-        adminWa.session,
-        pemesanan.user.nomor_hp,
-        customerText,
-        pemesananId,
-      );
-
-      // ✅ Jika ada pesan untuk admin, kirim ke admin juga
-      if (message?.text_to_admin) {
-        await this.whatsappService.sendMessage(
-          adminWa.session,
-          adminWa.nomor_wa,
-          message.text_to_admin,
-          pemesananId,
-        );
-      }
-    } catch (error) {
-      this.logger.error(`❌ Gagal kirim pesan pemesanan WA: ${error.message}`);
-    }
   }
 
   async findAll(query: QueryParamsDto) {
@@ -1368,5 +1260,134 @@ export class PemesananService {
     };
 
     return { countries, cities, services, price };
+  }
+
+  async updateKendaraan(id: number, data: PemesananKendaraanDto) {
+    const pemesanan = await this.prismaService.pemesanan.findFirst({
+      where: { id },
+      include: { pemesanan_item: true },
+    });
+
+    if (!pemesanan) {
+      throw new NotFoundException(`Order ID ${id} not found`);
+    }
+
+    // Cari item kendaraan yang sudah ada dalam pemesanan
+    const existingKendaraanItem = pemesanan.pemesanan_item.find(
+      item => item.item_type === 'KENDARAAN',
+    );
+
+    if (!existingKendaraanItem) {
+      throw new NotFoundException('No vehicle item found in the order to update');
+    }
+
+    // console.log(pemesanan.total_harga, 'pemesanan.total_harga');
+    // console.log(existingKendaraanItem.total_harga, 'existingKendaraanItem.total_harga');
+    // console.log(data.harga, 'data.harga');
+    // return console.log(
+    //   Number(pemesanan.total_harga) -
+    //     Number(existingKendaraanItem.total_harga) +
+    //     Number(data.harga),
+    // );
+
+    // Gunakan transaction untuk update kedua entity secara atomic
+    const result = await this.prismaService.$transaction(async prisma => {
+      // 1. Update pemesanan_item dengan tipe KENDARAAN
+      const updatedItem = await prisma.pemesananItem.update({
+        where: {
+          id: existingKendaraanItem.id,
+        },
+        data: {
+          item_id: data.kendaraan_id,
+          durasi_id: data.durasi_id,
+          tanggal_mulai: existingKendaraanItem.tanggal_mulai,
+          tanggal_selesai: existingKendaraanItem.tanggal_selesai,
+          total_harga: data.harga,
+        },
+      });
+
+      // 2. Update notes pada pemesanan
+      const updatedPemesanan = await prisma.pemesanan.update({
+        where: { id },
+        data: {
+          notes: data.notes,
+          total_harga:
+            Number(pemesanan.total_harga) -
+            Number(existingKendaraanItem.total_harga) +
+            Number(data.harga),
+        },
+      });
+
+      return {
+        updatedItem,
+        updatedPemesanan,
+      };
+    });
+
+    return result;
+  }
+
+  async updatePopularCategory(id: number, type: 'KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE') {
+    try {
+      return await this.prismaService.$transaction(async prisma => {
+        let tableName: string;
+
+        // Tentukan tabel berdasarkan type
+        switch (type) {
+          case 'KENDARAAN':
+            tableName = 'kendaraan';
+            break;
+          case 'AKOMODASI':
+            tableName = 'akomodasi';
+            break;
+          case 'TRAVEL_PACKAGE':
+            tableName = 'travel_package';
+            break;
+          default:
+            throw new BadRequestException('Invalid type');
+        }
+
+        // Cek apakah item ada
+        const item = await prisma[tableName].findUnique({
+          where: { id },
+        });
+
+        if (!item) {
+          throw new NotFoundException(`${type} with ID ${id} not found`);
+        }
+
+        // Hitung jumlah item popular yang sudah ada untuk type ini
+        const popularCount = await prisma[tableName].count({
+          where: { is_popular: true },
+        });
+
+        // Jika sudah mencapai batas 6, cari item popular yang paling lama
+        if (popularCount >= 6) {
+          // Cari item popular dengan created_at tertua atau menggunakan kriteria lain
+          const oldestPopularItem = await prisma[tableName].findFirst({
+            where: { is_popular: true },
+            orderBy: { created_at: 'asc' }, // Ganti dengan field yang sesuai jika perlu
+          });
+
+          if (oldestPopularItem) {
+            // Update item yang lama menjadi tidak popular
+            await prisma[tableName].update({
+              where: { id: oldestPopularItem.id },
+              data: { is_popular: false },
+            });
+          }
+        }
+
+        // Update item yang diinginkan menjadi popular
+        const updatedItem = await prisma[tableName].update({
+          where: { id },
+          data: { is_popular: true },
+        });
+
+        return updatedItem;
+      });
+    } catch (error) {
+      throw error;
+    }
   }
 }

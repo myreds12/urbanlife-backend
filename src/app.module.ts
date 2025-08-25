@@ -22,10 +22,33 @@ import { NewsCategoryModule } from './news-category/news-category.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CategoryModule } from './category/category.module';
 import { BlogModule } from './blog/blog.module';
+import { MailsModule } from './mails/mails.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { BullModule } from '@nestjs/bull';
+import { AboutusModule } from './aboutus/aboutus.module';
+import { ServiceScheduleModule } from './service-schedule/service-schedule.module';
+import { HeroSectionModule } from './hero-section/hero-section.module';
+import { TestimonialModule } from './testimonial/testimonial.module';
 
 @Module({
   imports: [
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        redis: {
+          host: configService.get('REDIS_HOST'),
+          port: configService.get('REDIS_PORT'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
+    BullModule.registerQueue({
+      name: 'pemesanan-processing',
+    }),
     ScheduleModule.forRoot(),
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     RoleModule,
     PrismaModule,
     UsersModule,
@@ -46,6 +69,11 @@ import { BlogModule } from './blog/blog.module';
     NewsCategoryModule,
     CategoryModule,
     BlogModule,
+    MailsModule,
+    AboutusModule,
+    ServiceScheduleModule,
+    HeroSectionModule,
+    TestimonialModule,
   ],
   controllers: [AppController],
   providers: [AppService],

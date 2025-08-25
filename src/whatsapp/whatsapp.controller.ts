@@ -86,7 +86,8 @@ export class WhatsappController {
     @Body() body: { to: string; message: string; pemesanan_id: number },
     @Req() req: UserRequest,
   ) {
-    const sessionId = `user_${req.user.id}`;
+    console.log(req.user, 'user data from request');
+    const sessionId = `user_73`;
     return await this.whatsappService.sendMessage(
       sessionId,
       body.to,
