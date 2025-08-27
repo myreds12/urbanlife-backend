@@ -11,6 +11,7 @@ import {
   UploadedFiles,
   Headers,
   Query,
+  Logger,
 } from '@nestjs/common';
 import { PembayaranService } from './pembayaran.service';
 import { CreatePembayaranDto } from './dto/create-pembayaran.dto';
@@ -21,17 +22,30 @@ import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 
 @Controller('pembayaran')
 export class PembayaranController {
+  private readonly logger = new Logger(PembayaranController.name);
+
   constructor(private readonly pembayaranService: PembayaranService) {}
 
-  @Post('invoice')
-  async handleInvoiceWebhook(@Body() payload: any, @Headers('x-callback-token') token: string) {
+  @Post('xendit')
+  async handleXenditWebhook(@Body() payload: any, @Headers('x-callback-token') token: string) {
+    // this.logger.log(`Webhook received from: ${userAgent}`);
+
+    // Verify webhook token
     if (token !== process.env.XENDIT_CALLBACK_TOKEN) {
+      this.logger.warn('Unauthorized webhook attempt');
       return { message: 'Unauthorized' };
     }
 
-    console.log('BODY:', payload);
+    this.logger.debug('Webhook payload:', JSON.stringify(payload, null, 2));
 
-    return this.pembayaranService.handleXenditWebhook(payload);
+    try {
+      const result = await this.pembayaranService.handleXenditWebhook(payload);
+      this.logger.log('Webhook processed successfully');
+      return result;
+    } catch (error) {
+      this.logger.error('Webhook processing failed:', error.message);
+      throw error;
+    }
   }
 
   @Post()

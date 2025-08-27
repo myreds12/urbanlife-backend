@@ -7,6 +7,7 @@ import { InvoiceApi } from 'xendit-node/invoice/apis';
 import { createXenditInvoice } from 'src/utils/invoice/invoice';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 import { PemesananService } from 'src/pemesanan/pemesanan.service';
+import { WhatsappService } from 'src/whatsapp/whatsapp.service';
 
 @Injectable()
 export class PembayaranService {
@@ -14,49 +15,111 @@ export class PembayaranService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly pemesananService: PemesananService,
+    private readonly whatsappService: WhatsappService,
   ) {}
   async handleXenditWebhook(payload: any) {
-    const { id: invoiceId, status, payment_method } = payload;
+    const {
+      id: invoiceId,
+      status,
+      payment_method,
+      amount,
+      // external_id,
+      // payer_email,
+      va_numbers,
+      expiry_date,
+    } = payload;
 
     if (!invoiceId || !status) {
       throw new InternalServerErrorException('Invalid webhook payload');
     }
 
+    console.log(status, 'STATUS');
+
+    // Cari data pembayaran di DB
+    const pembayaran = await this.prismaService.pembayaran.findFirst({
+      where: { invoice_id: invoiceId },
+      include: { pemesanan: { select: { user: true } } }, // supaya dapat nomor HP user
+    });
+
+    if (!pembayaran) {
+      throw new NotFoundException('Pembayaran tidak ditemukan');
+    }
+
+    const nomorWa = pembayaran.pemesanan.user.nomor_hp; // misal sudah disimpan di tabel user
     const metode = payment_method || 'UNKNOWN';
 
+    // Ambil VA number (jika metode VA)
+    let vaNumber: string | null = null;
+    if (va_numbers && va_numbers.length > 0) {
+      vaNumber = va_numbers[0].account_number;
+    }
+
     switch (status) {
+      case 'PENDING':
+        // Kirim notif instruksi pembayaran
+        await this.whatsappService.sendMessage(
+          'default', // sessionId WA
+          nomorWa,
+          `Halo ${pembayaran.pemesanan.user.nama},\n\n` +
+            `Silakan lakukan pembayaran sebesar Rp${amount} menggunakan metode ${metode}.\n` +
+            `${vaNumber ? `Nomor Virtual Account: ${vaNumber}\n` : ''}` +
+            `${expiry_date ? `Batas pembayaran: ${expiry_date}\n` : ''}\n` +
+            `Terima kasih 🙏`,
+          pembayaran.id,
+        );
+        break;
+
       case 'PAID':
         await this.prismaService.pembayaran.updateMany({
           where: { invoice_id: invoiceId },
           data: {
-            status: 'LUNAS',
+            status: 'PAID',
             tanggal_bayar: new Date(),
             metode,
           },
         });
-        return { message: 'Pembayaran sukses diperbarui' };
+
+        await this.whatsappService.sendMessage(
+          'default',
+          nomorWa,
+          `✅ Pembayaran sebesar Rp${amount} telah diterima. Terima kasih telah melakukan transaksi dengan kami.`,
+          pembayaran.id,
+        );
+        break;
 
       case 'EXPIRED':
         await this.prismaService.pembayaran.updateMany({
           where: { invoice_id: invoiceId },
-          data: {
-            status: 'KADALUARSA',
-          },
+          data: { status: 'EXPIRED' },
         });
-        return { message: 'Invoice kadaluarsa' };
+
+        await this.whatsappService.sendMessage(
+          'default',
+          nomorWa,
+          `⚠️ Pembayaran dengan invoice ${invoiceId} telah *kadaluarsa*. Silakan lakukan pemesanan ulang.`,
+          pembayaran.id,
+        );
+        break;
 
       case 'FAILED':
         await this.prismaService.pembayaran.updateMany({
           where: { invoice_id: invoiceId },
-          data: {
-            status: 'GAGAL',
-          },
+          data: { status: 'FAILED' },
         });
-        return { message: 'Pembayaran gagal' };
+
+        await this.whatsappService.sendMessage(
+          'default',
+          nomorWa,
+          `❌ Pembayaran sebesar Rp${amount} *gagal diproses*. Silakan coba lagi.`,
+          pembayaran.id,
+        );
+        break;
 
       default:
         return { message: `Status ${status} tidak ditangani secara eksplisit` };
     }
+
+    return { message: `Webhook status ${status} diproses` };
   }
 
   async create(createPembayaranDto: CreatePembayaranDto, files: Express.Multer.File[]) {

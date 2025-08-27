@@ -57,6 +57,7 @@ export class AuthService {
         email,
         nama,
         role_id,
+        role: roleUser,
       },
       {
         expiresIn: expired,

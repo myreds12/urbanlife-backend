@@ -6,6 +6,7 @@ import { diskStorage } from 'multer';
 import { fileFilter } from 'src/common/filters/file-filter';
 import { extname } from 'path';
 import { PemesananModule } from 'src/pemesanan/pemesanan.module';
+import { WhatsappModule } from 'src/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { PemesananModule } from 'src/pemesanan/pemesanan.module';
       fileFilter: fileFilter,
     }),
     PemesananModule,
+    WhatsappModule,
   ],
   controllers: [PembayaranController],
   providers: [PembayaranService],
