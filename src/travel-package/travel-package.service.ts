@@ -271,6 +271,7 @@ export class TravelPackageService {
               bahasa: true,
               deskripsi: true,
               itinerary: true,
+              kebijakan: true,
             },
           },
           travel_package_itinerary: {

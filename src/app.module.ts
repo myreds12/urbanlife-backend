@@ -29,6 +29,7 @@ import { AboutusModule } from './aboutus/aboutus.module';
 import { ServiceScheduleModule } from './service-schedule/service-schedule.module';
 import { HeroSectionModule } from './hero-section/hero-section.module';
 import { TestimonialModule } from './testimonial/testimonial.module';
+import { OurPartnerModule } from './our-partner/our-partner.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { TestimonialModule } from './testimonial/testimonial.module';
     ServiceScheduleModule,
     HeroSectionModule,
     TestimonialModule,
+    OurPartnerModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -29,6 +29,15 @@ model User {
   AdminWa           AdminWa[]
 }
 
+model OurPartner {
+  id Int @id @default(autoincrement())
+  nama String @db.VarChar(250)
+  url String @db.VarChar(250)
+  nama_file String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+}
 model Testimonial {
   id           Int     @id @default(autoincrement())
   pemesanan_id Int?
