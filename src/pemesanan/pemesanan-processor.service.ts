@@ -19,7 +19,7 @@ export class OrderProcessor {
 
   @Process('process-order')
   async handleOrderProcessing(job: Job) {
-    const { orderId, customerEmail, customerName } = job.data;
+    const { orderId, customerEmail, customerName, status } = job.data;
 
     this.logger.log(`Memproses pemesanan ${orderId}...`);
 
@@ -30,7 +30,7 @@ export class OrderProcessor {
         this.sendOrderConfirmationEmail(orderId, customerEmail, customerName),
 
         // Send WhatsApp messages
-        this.sendPemesananMessage(orderId),
+        this.sendPemesananMessage(orderId, status),
       ]);
 
       // Handle results
@@ -89,7 +89,7 @@ export class OrderProcessor {
   }
 
   // ✅ Metode sendPemesananMessage yang disesuaikan dengan model database
-  async sendPemesananMessage(pemesananId: number) {
+  async sendPemesananMessage(pemesananId: number, status: string) {
     try {
       const pemesanan = await this.prismaService.pemesanan.findUnique({
         where: { id: pemesananId },
@@ -115,7 +115,7 @@ export class OrderProcessor {
       }
 
       const message = await this.prismaService.templateMessage.findFirst({
-        where: { is_active: true },
+        where: { is_active: true, status: status },
         select: { text_to_customer: true, text_to_admin: true },
       });
 

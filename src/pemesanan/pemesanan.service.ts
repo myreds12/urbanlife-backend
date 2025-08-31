@@ -95,6 +95,7 @@ export class PemesananService {
         customerEmail: pemesanan.user.email,
         customerPhone: pemesanan.user.nomor_hp,
         customerName: pemesanan.user.nama,
+        status: 'PENDING',
         orderDetails: {
           id: pemesanan.id,
           total_harga: pemesanan.total_harga,
@@ -339,13 +340,37 @@ export class PemesananService {
         type,
         category_id,
         top_attraction,
+        is_order,
       } = query;
 
       const skip = (Number(page) - 1) * Number(take);
 
       const bookedMap = new Map<'KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE', number[]>();
 
-      if (date_from && date_to) {
+      if (is_order === true) {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date();
+        todayEnd.setHours(23, 59, 59, 999);
+
+        console.log(todayStart, todayEnd);
+
+        const bookedItems = await this.prismaService.pemesananItem.findMany({
+          where: {
+            tanggal_mulai: { lte: todayEnd },
+            tanggal_selesai: { gte: todayStart },
+          },
+          select: { item_id: true, item_type: true },
+        });
+
+        bookedItems.forEach(({ item_type, item_id }) => {
+          const key = item_type as 'KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE';
+          if (!bookedMap.has(key)) bookedMap.set(key, []);
+          bookedMap.get(key)?.push(item_id);
+        });
+        console.log(bookedMap, 'bookedMap');
+      } else if (date_from && date_to) {
+        // Jika bukan is_order, gunakan filter tanggal dari query
         const bookedItems = await this.prismaService.pemesananItem.findMany({
           where: {
             tanggal_mulai: { lte: new Date(date_to) },

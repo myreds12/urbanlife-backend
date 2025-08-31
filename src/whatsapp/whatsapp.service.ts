@@ -251,6 +251,7 @@ export class WhatsappService {
           name: dto.name,
           category: dto.category,
           text_to_admin: dto.text_to_admin,
+          status: dto.status,
           text_to_customer: dto.text_to_customer,
         },
       });
@@ -306,6 +307,7 @@ export class WhatsappService {
           name: dto.name,
           category: dto.category,
           text_to_admin: dto.text_to_admin,
+          status: dto.status,
           text_to_customer: dto.text_to_customer,
           updatedAt: new Date(),
         },

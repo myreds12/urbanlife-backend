@@ -759,6 +759,8 @@ model TemplateMessage {
   category String @default("notifikasi") @db.VarChar(250)
   name     String @db.VarChar(250)
 
+  status    String @default("PENDING")
+
   text_to_customer String @db.LongText
   text_to_admin    String @db.LongText
 

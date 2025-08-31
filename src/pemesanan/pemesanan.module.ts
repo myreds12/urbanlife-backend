@@ -10,7 +10,7 @@ import { MailsModule } from 'src/mails/mails.module';
 @Module({
   controllers: [PemesananController],
   providers: [PemesananService, PemesananCronService, OrderProcessor],
-  exports: [PemesananService],
+  exports: [PemesananService, PemesananCronService],
   imports: [
     WhatsappModule,
     MailsModule,

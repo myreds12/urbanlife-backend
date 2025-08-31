@@ -34,6 +34,11 @@ export class QueryParamsDto {
   is_rent?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  is_order?: boolean;
+
+  @IsOptional()
   offset?: number;
 
   @IsOptional()

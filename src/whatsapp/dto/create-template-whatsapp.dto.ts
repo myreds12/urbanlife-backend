@@ -8,6 +8,9 @@ export class CreateTemplateWhatsappDto {
   category: string;
 
   @IsString()
+  status: string;
+
+  @IsString()
   text_to_admin: string;
 
   @IsString()
