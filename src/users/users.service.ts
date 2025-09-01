@@ -18,14 +18,11 @@ export class UsersService {
     file: Express.Multer.File,
   ) {
     try {
-      if (!file) {
-        throw new Error('File is required');
-      }
       const hashedPassword = await bcrypt.hash(data.password, 10);
 
       return await this.prisma.user.create({
         data: {
-          profile: file.path,
+          profile: file?.path ?? undefined,
           nama: data.nama,
           email: data.email,
           nomor_hp: data.nomor_hp,
