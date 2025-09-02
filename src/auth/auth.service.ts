@@ -47,7 +47,7 @@ export class AuthService {
   }
 
   async generateJwt(user: User, secret: any, expired = JwtConfig.user_expired, roleUser: string) {
-    const { id, email, nama, role_id } = user;
+    const { id, email, nama, role_id, profile } = user;
 
     const accessToken = this.jwtService.sign(
       {
@@ -55,6 +55,7 @@ export class AuthService {
         email,
         nama,
         role_id,
+        profile,
         role: roleUser,
       },
       {

@@ -5,7 +5,7 @@ export class CreateGuideDto {
   @IsNotEmpty()
   nama: string;
 
-  @IsEnum(['Laki - laki', 'Perempuan'])
+  @IsEnum(['Male', 'Female'])
   @IsNotEmpty()
   gender: string;
 

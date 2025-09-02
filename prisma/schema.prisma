@@ -128,7 +128,7 @@ model Driver {
   nama      String  @db.VarChar(250)
   driver_id String? @db.VarChar(250)
   nomor_hp  String  @db.VarChar(50)
-  gender    String  @default("Laki - laki") @db.VarChar(50)
+  gender    String  @default("Male") @db.VarChar(50)
 
   tanggal_periode_berakhir DateTime? @db.DateTime()
 
@@ -143,7 +143,7 @@ model Guide {
   nama      String  @db.VarChar(250)
   driver_id String? @db.VarChar(250)
   nomor_hp  String  @db.VarChar(50)
-  gender    String  @default("Laki - laki") @db.VarChar(50)
+  gender    String  @default("Male") @db.VarChar(50)
 
   tanggal_periode_berakhir DateTime? @db.DateTime()
 

@@ -5,7 +5,7 @@ export class CreateDriverDto {
   @IsNotEmpty()
   nama: string;
 
-  @IsEnum(['Laki - laki', 'Perempuan'])
+  @IsEnum(['Male', 'Female'])
   @IsNotEmpty()
   gender: string;
 
