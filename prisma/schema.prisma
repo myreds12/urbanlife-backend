@@ -30,14 +30,15 @@ model User {
 }
 
 model OurPartner {
-  id Int @id @default(autoincrement())
-  nama String @db.VarChar(250)
-  url String @db.VarChar(250)
+  id        Int    @id @default(autoincrement())
+  nama      String @db.VarChar(250)
+  url       String @db.VarChar(250)
   nama_file String @db.VarChar(250)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime?
 }
+
 model Testimonial {
   id           Int     @id @default(autoincrement())
   pemesanan_id Int?
@@ -232,7 +233,7 @@ model HeroSection {
   url       String @db.VarChar(250)
   nama_file String @db.VarChar(250)
 
-  status Boolean @default(true)
+  status Boolean @default(false)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime?
@@ -759,7 +760,7 @@ model TemplateMessage {
   category String @default("notifikasi") @db.VarChar(250)
   name     String @db.VarChar(250)
 
-  status    String @default("PENDING")
+  status String @default("PENDING")
 
   text_to_customer String @db.LongText
   text_to_admin    String @db.LongText

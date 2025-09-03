@@ -4,8 +4,9 @@ import { Job } from 'bull';
 import { MailsService } from 'src/mails/mails.service';
 import { WhatsappService } from 'src/whatsapp/whatsapp.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Logger } from '@nestjs/common';
+import { InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { differenceInCalendarDays } from 'date-fns';
+import { PemesananItem } from '@prisma/client';
 
 @Processor('pemesanan-processing')
 export class OrderProcessor {
@@ -151,103 +152,181 @@ export class OrderProcessor {
     }
   }
 
-  // ✅ Helper method untuk generate item texts berdasarkan item_type
-  private async generateItemTexts(pemesananItems: any[]) {
-    // Group items by type untuk efficient querying
-    const kendaraanIds = pemesananItems
-      .filter(item => item.item_type === 'KENDARAAN')
-      .map(item => item.item_id);
+  @Process('send-reminder')
+  async handleSendReminder(job: Job<{ orderId: number }>) {
+    await this.sendReminderNotification(job.data.orderId);
+  }
 
-    const travelPackageIds = pemesananItems
-      .filter(item => item.item_type === 'TRAVEL_PACKAGE')
-      .map(item => item.item_id);
+  // pemesanan.processor.ts
+  async sendReminderNotification(orderId: number) {
+    try {
+      const pemesanan = await this.prismaService.pemesanan.findUnique({
+        where: { id: orderId },
+        include: { user: true, pemesanan_item: true },
+      });
 
-    const akomodasiRoomIds = pemesananItems
-      .filter(item => item.item_type === 'AKOMODASI')
-      .map(item => item.room_id)
-      .filter(Boolean);
-
-    const durasiIds = pemesananItems
-      .filter(item => item.durasi_id)
-      .map(item => item.durasi_id)
-      .filter(Boolean);
-
-    // Parallel queries untuk semua data yang diperlukan
-    const [kendaraans, travelPackages, akomodasiRooms, kendaraanDurasis] = await Promise.all([
-      kendaraanIds.length > 0
-        ? this.prismaService.kendaraan.findMany({
-            where: { id: { in: kendaraanIds } },
-            select: { id: true, nama: true },
-          })
-        : Promise.resolve([]),
-
-      travelPackageIds.length > 0
-        ? this.prismaService.travelPackage.findMany({
-            where: { id: { in: travelPackageIds } },
-            select: { id: true, nama: true },
-          })
-        : Promise.resolve([]),
-
-      akomodasiRoomIds.length > 0
-        ? this.prismaService.akomodasiRoomAndPrice.findMany({
-            where: { id: { in: akomodasiRoomIds } },
-            include: { akomodasi: { select: { nama: true } } },
-          })
-        : Promise.resolve([]),
-
-      durasiIds.length > 0
-        ? this.prismaService.kendaraanDurasi.findMany({
-            where: { id: { in: durasiIds } },
-            select: { id: true, durasi: true },
-          })
-        : Promise.resolve([]),
-    ]);
-
-    // Create maps untuk efficient lookup
-    const kendaraanMap = new Map(kendaraans.map(k => [k.id, k.nama]));
-    const travelPackageMap = new Map(travelPackages.map(t => [t.id, t.nama]));
-    const akomodasiRoomMap = new Map(akomodasiRooms.map(r => [r.id, r]));
-    const durasiMap = new Map(kendaraanDurasis.map(d => [d.id, d.durasi]));
-
-    // Generate item texts
-    return pemesananItems.map(item => {
-      let namaItem = '';
-      let durasi = '-';
-
-      const tanggalMulai = item.tanggal_mulai ? new Date(item.tanggal_mulai) : null;
-      const tanggalSelesai = item.tanggal_selesai ? new Date(item.tanggal_selesai) : null;
-      const diff =
-        tanggalMulai && tanggalSelesai
-          ? differenceInCalendarDays(tanggalSelesai, tanggalMulai)
-          : null;
-
-      switch (item.item_type) {
-        case 'KENDARAAN':
-          namaItem = kendaraanMap.get(item.item_id) ?? 'Kendaraan';
-          durasi =
-            item.durasi_hari != null
-              ? `${item.durasi_hari} hari`
-              : item.durasi_id
-                ? `${durasiMap.get(item.durasi_id) ?? '-'}`
-                : '-';
-          break;
-
-        case 'TRAVEL_PACKAGE':
-          namaItem = travelPackageMap.get(item.item_id) ?? 'Travel Package';
-          durasi = diff !== null ? `${diff} hari` : '-';
-          break;
-
-        case 'AKOMODASI':
-          const room = akomodasiRoomMap.get(item.room_id);
-          namaItem = room ? `${room.akomodasi?.nama ?? 'Akomodasi'} - ${room.nama}` : 'Akomodasi';
-          durasi = diff !== null ? `${diff} hari` : '-';
-          break;
-
-        default:
-          namaItem = 'Item tidak dikenali';
+      if (!pemesanan) {
+        throw new NotFoundException(`Pemesanan ID ${orderId} tidak ditemukan`);
       }
 
-      return `• ${namaItem} (durasi ${durasi}) - Rp ${Number(item.total_harga).toLocaleString('id-ID')}`;
-    });
+      const reminderTemplate = await this.prismaService.templateMessage.findFirst({
+        where: { category: 'Reminder', is_active: true },
+        select: { text_to_customer: true, text_to_admin: true },
+      });
+
+      if (!reminderTemplate) {
+        this.logger.warn(
+          `⚠️ Tidak ditemukan template pesan reminder aktif untuk pemesanan ${orderId}`,
+        );
+        return;
+      }
+
+      const itemTexts = await this.generateItemTexts(pemesanan.pemesanan_item);
+
+      const placeholders = {
+        customerName: pemesanan.user.nama,
+        orderId: pemesanan.id.toString(),
+        items: itemTexts.join('\n'),
+        total: Number(pemesanan.total_harga).toLocaleString('id-ID'),
+      };
+
+      const customerMessage = this.replacePlaceholders(
+        reminderTemplate.text_to_customer,
+        placeholders,
+      );
+
+      const adminWa = await this.prismaService.adminWa.findFirst({
+        where: { is_active: true },
+        select: { session: true, nomor_wa: true },
+      });
+
+      if (!adminWa?.session) {
+        this.logger.warn('⚠️ Tidak ada session WhatsApp admin yang aktif.');
+        return;
+      }
+
+      // Send WhatsApp to customer
+      await this.whatsappService.sendMessage(
+        adminWa.session,
+        pemesanan.user.nomor_hp,
+        customerMessage,
+        orderId,
+      );
+
+      // Send WhatsApp to admin if exists
+      if (reminderTemplate.text_to_admin) {
+        const adminMessage = this.replacePlaceholders(reminderTemplate.text_to_admin, placeholders);
+        await this.whatsappService.sendMessage(
+          adminWa.session,
+          adminWa.nomor_wa,
+          adminMessage,
+          orderId,
+        );
+      }
+
+      // Send email
+      await this.mailService.sendOrderReminder(pemesanan.user.email, {
+        orderId: pemesanan.id,
+        customerName: pemesanan.user.nama,
+        items: itemTexts,
+        total: Number(pemesanan.total_harga),
+        orderDate: pemesanan.createdAt,
+        note: 'Harap segera melakukan pembayaran', // optional
+      });
+
+      this.logger.log(`✅ Reminder notification berhasil dikirim untuk order ${orderId}`);
+    } catch (error) {
+      this.logger.error(
+        `❌ Gagal kirim reminder notification untuk order ${orderId}: ${error.message}`,
+      );
+      throw new InternalServerErrorException(error.message);
+    }
+  }
+
+  /**
+   * Helper sederhana untuk replace placeholder {{key}}
+   */
+  private replacePlaceholders(template: string, data: Record<string, string>): string {
+    return Object.entries(data).reduce(
+      (text, [key, value]) => text.replace(new RegExp(`{{${key}}}`, 'g'), value),
+      template,
+    );
+  }
+
+  // ✅ Helper method untuk generate item texts berdasarkan item_type
+  private async generateItemTexts(pemesananItems: PemesananItem[]): Promise<string[]> {
+    const items: string[] = [];
+
+    for (const item of pemesananItems) {
+      switch (item.item_type) {
+        case 'KENDARAAN': {
+          const kendaraan = await this.prismaService.kendaraan.findUnique({
+            where: { id: item.item_id },
+            include: {
+              driver: true,
+            },
+          });
+
+          if (kendaraan) {
+            items.push(
+              `🚗 Kendaraan: ${kendaraan.nama} (${kendaraan.plat_nomor})\n` +
+                `   Model: ${kendaraan.model ?? '-'}\n` +
+                `   Kapasitas: ${kendaraan.kapasitas ?? '-'}\n` +
+                `   Harga: Rp ${Number(kendaraan.harga).toLocaleString('id-ID')}\n` +
+                (kendaraan.driver
+                  ? `   Driver: ${kendaraan.driver.nama} (HP: ${kendaraan.driver.nomor_hp ?? '-'})\n`
+                  : ''),
+            );
+          }
+          break;
+        }
+
+        case 'TRAVEL_PACKAGE': {
+          const paket = await this.prismaService.travelPackage.findUnique({
+            where: { id: item.item_id },
+            include: {
+              guide: true,
+            },
+          });
+
+          if (paket) {
+            items.push(
+              `🌍 Paket Wisata: ${paket.nama}\n` +
+                `   Durasi: ${paket.durasi ?? '-'} ${paket.tipe_durasi}\n` +
+                `   Harga Dewasa: Rp ${Number(paket.harga_dewasa).toLocaleString('id-ID')}\n` +
+                `   Harga Anak: Rp ${Number(paket.harga_anak).toLocaleString('id-ID')}\n` +
+                (paket.guide
+                  ? `   Guide: ${paket.guide.nama} (HP: ${paket.guide.nomor_hp ?? '-'})\n`
+                  : ''),
+            );
+          }
+          break;
+        }
+
+        case 'AKOMODASI': {
+          const akomodasi = await this.prismaService.akomodasi.findUnique({
+            where: { id: item.item_id },
+            include: {
+              akomodasi_room_and_price: true,
+            },
+          });
+
+          if (akomodasi) {
+            items.push(
+              `🏨 Akomodasi: ${akomodasi.nama}\n` +
+                `   Kategori: ${akomodasi.kategori}\n` +
+                `   Tipe: ${akomodasi.tipe}\n` +
+                `   Harga: Rp ${Number(akomodasi.harga).toLocaleString('id-ID')}`,
+            );
+          }
+          break;
+        }
+
+        default:
+          items.push(`❓ Item dengan tipe ${item.item_type} tidak dikenali`);
+      }
+    }
+
+    return items;
   }
 }

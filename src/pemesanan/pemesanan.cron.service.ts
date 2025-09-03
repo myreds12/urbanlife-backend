@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { endOfDay } from 'date-fns';
+import { endOfDay, addDays, startOfDay } from 'date-fns';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 
@@ -58,7 +58,6 @@ export class PemesananCronService {
 
       this.logger.log(`✅ ${updated.length} pemesanan berhasil diupdate ke DONE.`);
 
-      // Kirim job ke queue untuk setiap pemesanan yang diupdate
       for (const p of updated) {
         await this.orderQueue.add('process-order', {
           orderId: p.id,
@@ -69,6 +68,45 @@ export class PemesananCronService {
       }
     } catch (error) {
       this.logger.error('❌ Gagal update status pemesanan:', error);
+    }
+  }
+
+  // Cronjob baru untuk Reminder Notifikasi satu hari sebelum tanggal selesai
+  @Cron('0 8 * * *')
+  async scheduleReminders() {
+    this.logger.log('🔔 Menjalankan cron reminder notifikasi pemesanan...');
+
+    try {
+      const tomorrowStart = startOfDay(addDays(new Date(), 1));
+      const tomorrowEnd = endOfDay(addDays(new Date(), 1));
+
+      const pemesanans = await this.prisma.pemesanan.findMany({
+        where: {
+          status: { not: 'DONE' },
+          pemesanan_item: {
+            some: {
+              tanggal_mulai: {
+                gte: tomorrowStart,
+                lte: tomorrowEnd,
+              },
+            },
+          },
+        },
+        select: { id: true }, // cukup ambil id
+      });
+
+      if (pemesanans.length === 0) {
+        this.logger.log('ℹ️ Tidak ada pemesanan untuk di-reminder hari ini.');
+        return;
+      }
+
+      for (const p of pemesanans) {
+        await this.orderQueue.add('send-reminder', { orderId: p.id });
+      }
+
+      this.logger.log(`✅ ${pemesanans.length} pemesanan berhasil dijadwalkan untuk reminder.`);
+    } catch (error) {
+      this.logger.error('❌ Gagal menjadwalkan reminder notifikasi:', error);
     }
   }
 }

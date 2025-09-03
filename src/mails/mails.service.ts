@@ -174,4 +174,64 @@ export class MailsService {
 
     return this.sendTestEmail(to, subject, template, context);
   }
+
+  // mail.service.ts
+  async sendOrderReminder(
+    to: string,
+    context: {
+      orderId: number;
+      customerName: string;
+      items: string[];
+      total: number;
+      orderDate: Date;
+      note?: string;
+    },
+  ) {
+    const subject = `Order Reminder #${context.orderId}`;
+    const formattedDate = new Date(context.orderDate).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const template = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #4F46E5; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background: #f9f9f9; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        ul { padding-left: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Order Reminder</h1>
+        </div>
+        <div class="content">
+          <h2>Hi ${context.customerName},</h2>
+          <p>Ini adalah pengingat bahwa pesanan dengan Order ID <strong>#${context.orderId}</strong> Anda akan segera diproses.</p>
+          <p><strong>Tanggal Pesanan:</strong> ${formattedDate}</p>
+          <p><strong>Item Pesanan:</strong></p>
+          <ul>
+            ${context.items.map(item => `<li>${item}</li>`).join('')}
+          </ul>
+          <p><strong>Total:</strong> Rp ${context.total.toLocaleString('id-ID')}</p>
+          ${context.note ? `<p><strong>Catatan:</strong> ${context.note}</p>` : ''}
+          <p>Jika Anda memiliki pertanyaan, jangan ragu untuk menghubungi kami.</p>
+        </div>
+        <div class="footer">
+          <p>&copy; 2024 Your Company. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+    return this.sendTestEmail(to, subject, template, context);
+  }
 }

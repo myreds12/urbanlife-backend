@@ -99,6 +99,7 @@ export class HeroSectionService {
       });
       return heroSection;
     } catch (error) {
+      console.log(error);
       throw error;
     }
   }
