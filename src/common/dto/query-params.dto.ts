@@ -39,6 +39,11 @@ export class QueryParamsDto {
   is_order?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  is_active?: boolean;
+
+  @IsOptional()
   offset?: number;
 
   @IsOptional()

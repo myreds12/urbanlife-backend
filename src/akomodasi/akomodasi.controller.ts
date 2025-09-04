@@ -71,8 +71,8 @@ export class AkomodasiController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.akomodasiService.remove(+id);
+  @Delete()
+  remove(@Body('ids') ids: number[]) {
+    return this.akomodasiService.remove(ids);
   }
 }

@@ -3,6 +3,7 @@ import { CreateAkomodasiDto } from './dto/create-akomodasi.dto';
 import { UpdateAkomodasiDto } from './dto/update-akomodasi.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
+import { unlinkSync } from 'fs';
 
 @Injectable()
 export class AkomodasiService {
@@ -455,30 +456,47 @@ export class AkomodasiService {
     }
   }
 
-  async remove(id: number) {
+  async remove(ids: number[]) {
+    console.log(ids, 'IDS');
     try {
-      const akomodasi = await this.prismaService.akomodasi.findUnique({
-        where: { id },
+      const akomodasi = await this.prismaService.akomodasi.findMany({
+        where: {
+          id: { in: ids },
+        },
+        include: {
+          akomodasi_file: true,
+        },
       });
 
-      if (!akomodasi) {
-        throw new NotFoundException(`Akomodasi dengan ID ${id} tidak ditemukan`);
+      if (!akomodasi.length) {
+        throw new NotFoundException(`Tidak ada travel ditemukan untuk ID ${ids.join(', ')}`);
+      }
+
+      for (const travel of akomodasi) {
+        for (const file of travel.akomodasi_file) {
+          try {
+            unlinkSync(file.url); // Hapus file fisik
+          } catch (err) {
+            console.log(err);
+          }
+        }
       }
 
       await this.prismaService.$transaction([
         this.prismaService.akomodasiContent.deleteMany({
-          where: { akomodasi_id: id },
+          where: { akomodasi_id: { in: ids } },
         }),
         this.prismaService.akomodasiFile.deleteMany({
-          where: { akomodasi_id: id },
+          where: { akomodasi_id: { in: ids } },
         }),
-        this.prismaService.akomodasi.delete({
-          where: { id },
+        this.prismaService.akomodasi.deleteMany({
+          where: { id: { in: ids } },
         }),
       ]);
 
       return akomodasi;
     } catch (error) {
+      console.log(error);
       throw error;
     }
   }

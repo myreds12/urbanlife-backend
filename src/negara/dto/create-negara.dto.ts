@@ -1,4 +1,5 @@
-import { IsNotEmpty } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateNegaraDto {
   @IsNotEmpty()
@@ -6,4 +7,9 @@ export class CreateNegaraDto {
 
   @IsNotEmpty()
   kode: string;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  status: boolean;
 }

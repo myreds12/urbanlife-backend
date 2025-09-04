@@ -6,6 +6,7 @@ import { PemesananCronService } from './pemesanan.cron.service';
 import { BullModule } from '@nestjs/bull';
 import { OrderProcessor } from './pemesanan-processor.service';
 import { MailsModule } from 'src/mails/mails.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
   controllers: [PemesananController],
@@ -13,6 +14,7 @@ import { MailsModule } from 'src/mails/mails.module';
   exports: [PemesananService, PemesananCronService],
   imports: [
     WhatsappModule,
+    NotificationModule,
     MailsModule,
     BullModule.registerQueue({
       name: 'pemesanan-processing',

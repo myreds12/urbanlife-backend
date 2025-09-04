@@ -164,6 +164,7 @@ export class NegaraService {
         data: {
           nama: updateNegaraDto.nama,
           kode: updateNegaraDto.kode,
+          status: updateNegaraDto.status,
           url: file ? file.path : undefined,
           nama_file: file ? file.filename : undefined,
         },
@@ -177,11 +178,8 @@ export class NegaraService {
 
   async remove(id: number) {
     try {
-      const negara = await this.prismaService.negara.update({
+      const negara = await this.prismaService.negara.delete({
         where: { id },
-        data: {
-          status: false,
-        },
       });
       return negara;
     } catch (error) {

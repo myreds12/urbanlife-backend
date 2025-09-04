@@ -9,11 +9,13 @@ import { eachDayOfInterval, endOfMonth, format, startOfMonth, subMonths } from '
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { PemesananKendaraanDto } from './dto/pemesanan-kendaraan-update.dto';
+import { NotificationService } from 'src/notification/notification.service';
 
 @Injectable()
 export class PemesananService {
   constructor(
     private readonly prismaService: PrismaService,
+    private readonly notificationService: NotificationService,
     @InjectQueue('pemesanan-processing') private readonly pemesananQueue: Queue,
   ) {}
   private readonly logger = new Logger(PemesananService.name);
@@ -112,6 +114,14 @@ export class PemesananService {
         timeout: 30000,
       },
     );
+
+    await this.notificationService.createNotification(pemesanan.id, pemesanan.status, {
+      type: 'ORDER_CREATED',
+      message: `Order #${pemesanan.id} successfully created.`,
+      data: pemesanan,
+      user_id: createdUser.id,
+      order_created_at: pemesanan.createdAt,
+    });
 
     this.logger.log(`Pemesanan ${pemesanan.id} ditambahkan ke queue`);
 
@@ -302,6 +312,30 @@ export class PemesananService {
             connect: { id: user_id },
           },
         },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nama: true,
+              email: true,
+              nomor_hp: true,
+            },
+          },
+          pemesanan_item: {
+            include: {
+              durasi: true,
+              room: true,
+            },
+          },
+        },
+      });
+
+      await this.notificationService.createNotification(pemesanan.id, pemesanan.status, {
+        type: 'ORDER_UPDATED',
+        message: `Order #${pemesanan.id} sucessfully updated.`,
+        data: pemesanan,
+        user_id: pemesanan.user.id,
+        order_created_at: pemesanan.updatedAt,
       });
       return pemesanan;
     } catch (error) {

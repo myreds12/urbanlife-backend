@@ -9,12 +9,13 @@ export class DriverService {
   constructor(private prismaService: PrismaService) {}
   async create(createGuideDto: CreateDriverDto) {
     try {
-      const { nama, gender, nomor_hp, tanggal_periode_berakhir } = createGuideDto;
+      const { nama, gender, nomor_hp, tanggal_periode_berakhir, fluent_english } = createGuideDto;
       const driver = await this.prismaService.driver.create({
         data: {
           nama,
           gender,
           nomor_hp,
+          fluent_english,
           tanggal_periode_berakhir: tanggal_periode_berakhir
             ? new Date(tanggal_periode_berakhir)
             : null,
@@ -57,13 +58,14 @@ export class DriverService {
 
   async update(id: number, updateGuideDto: UpdateDriverDto) {
     try {
-      const { nama, gender, nomor_hp, tanggal_periode_berakhir } = updateGuideDto;
+      const { nama, gender, nomor_hp, tanggal_periode_berakhir, fluent_english } = updateGuideDto;
       const driver = await this.prismaService.driver.update({
         where: { id },
         data: {
           nama,
           gender,
           nomor_hp,
+          fluent_english,
           tanggal_periode_berakhir: tanggal_periode_berakhir
             ? new Date(tanggal_periode_berakhir)
             : undefined,

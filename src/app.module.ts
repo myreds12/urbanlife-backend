@@ -30,6 +30,7 @@ import { ServiceScheduleModule } from './service-schedule/service-schedule.modul
 import { HeroSectionModule } from './hero-section/hero-section.module';
 import { TestimonialModule } from './testimonial/testimonial.module';
 import { OurPartnerModule } from './our-partner/our-partner.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -43,9 +44,14 @@ import { OurPartnerModule } from './our-partner/our-partner.module';
       }),
       inject: [ConfigService],
     }),
-    BullModule.registerQueue({
-      name: 'pemesanan-processing',
-    }),
+    BullModule.registerQueue(
+      {
+        name: 'pemesanan-processing',
+      },
+      {
+        name: 'notification',
+      },
+    ),
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
@@ -76,6 +82,7 @@ import { OurPartnerModule } from './our-partner/our-partner.module';
     HeroSectionModule,
     TestimonialModule,
     OurPartnerModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

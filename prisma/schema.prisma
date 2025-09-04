@@ -131,6 +131,8 @@ model Driver {
   nomor_hp  String  @db.VarChar(50)
   gender    String  @default("Male") @db.VarChar(50)
 
+  fluent_english Boolean @default(false)
+
   tanggal_periode_berakhir DateTime? @db.DateTime()
 
   createdAt DateTime    @default(now())
@@ -224,6 +226,7 @@ model Pemesanan {
   notifikasi_wa  NotfikasiWa[]
   pemesanan_item PemesananItem[]
   Testimonial    Testimonial[]
+  Notification   Notification[]
 }
 
 model HeroSection {
@@ -582,9 +585,24 @@ model AkomodasiRoomAndPrice {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime?
 
-  akomodasi     Akomodasi       @relation(fields: [akomodasi_id], references: [id])
+  akomodasi     Akomodasi       @relation(fields: [akomodasi_id], references: [id], onDelete: Cascade)
   PemesananItem PemesananItem[]
   AkomodasiFile AkomodasiFile[]
+}
+
+model Notification {
+  id           Int @id @default(autoincrement())
+  pemesanan_id Int
+
+  data   String @db.Text
+  status String @db.VarChar(250)
+
+  is_read Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  pemesanan Pemesanan @relation(fields: [pemesanan_id], references: [id])
 }
 
 model AkomodasiFacilityGroup {
@@ -596,7 +614,7 @@ model AkomodasiFacilityGroup {
 
   type Int @default(1)
 
-  akomodasi Akomodasi           @relation(fields: [akomodasi_id], references: [id])
+  akomodasi Akomodasi           @relation(fields: [akomodasi_id], references: [id], onDelete: Cascade)
   fasilitas AkomodasiFacility[]
 }
 
@@ -607,7 +625,7 @@ model AkomodasiFacility {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime?
 
-  group AkomodasiFacilityGroup @relation(fields: [facility_group_id], references: [id])
+  group AkomodasiFacilityGroup @relation(fields: [facility_group_id], references: [id], onDelete: Cascade)
 }
 
 model AkomodasiContent {
@@ -622,7 +640,7 @@ model AkomodasiContent {
   createdAt DateTime  @default(now())
   updatedAt DateTime?
 
-  akomodasi Akomodasi @relation(fields: [akomodasi_id], references: [id])
+  akomodasi Akomodasi @relation(fields: [akomodasi_id], references: [id], onDelete: Cascade)
 }
 
 model AkomodasiFile {
@@ -638,8 +656,8 @@ model AkomodasiFile {
   createdAt DateTime  @default(now())
   updatedAt DateTime?
 
-  akomodasi Akomodasi              @relation(fields: [akomodasi_id], references: [id])
-  room      AkomodasiRoomAndPrice? @relation(fields: [room_id], references: [id])
+  akomodasi Akomodasi              @relation(fields: [akomodasi_id], references: [id], onDelete: Cascade)
+  room      AkomodasiRoomAndPrice? @relation(fields: [room_id], references: [id], onDelete: Cascade)
 }
 
 //DONE

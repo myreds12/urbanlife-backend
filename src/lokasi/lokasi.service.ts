@@ -16,12 +16,13 @@ export class LokasiService {
 
   async findAll(query: QueryParamsDto) {
     try {
-      const { take, page, negara_id } = query;
+      const { take, page, negara_id, is_active } = query;
       const skip = page * take - take;
       const count = await this.prismaService.lokasi.count();
       const lokasi = await this.prismaService.lokasi.findMany({
         where: {
           ...(negara_id && { negara_id }),
+          ...(is_active && { status: is_active }),
         },
         skip,
         take: take > 0 ? take : undefined,
@@ -62,18 +63,17 @@ export class LokasiService {
     }
   }
 
-  async update(id: number, { nama, alamat }: UpdateLokasiDto) {
+  async update(id: number, { nama, alamat, status }: UpdateLokasiDto) {
     return this.prismaService.lokasi.update({
       where: { id },
-      data: { nama, alamat },
+      data: { nama, alamat, status },
     });
   }
 
   async remove(id: number) {
     try {
-      const lokasi = await this.prismaService.lokasi.update({
+      const lokasi = await this.prismaService.lokasi.delete({
         where: { id },
-        data: { status: false },
       });
       return lokasi;
     } catch (error) {

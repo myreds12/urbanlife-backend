@@ -1,4 +1,5 @@
-import { IsInt, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsInt, IsOptional, IsString } from 'class-validator';
 
 export class CreateLokasiDto {
   @IsString()
@@ -10,4 +11,9 @@ export class CreateLokasiDto {
 
   @IsInt()
   negara_id: number;
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  status: boolean;
 }
