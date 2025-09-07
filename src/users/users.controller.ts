@@ -10,12 +10,14 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 
 @Controller('users')
 export class UsersController {
@@ -37,8 +39,8 @@ export class UsersController {
   }
 
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Query() query: QueryParamsDto) {
+    return this.usersService.findAll(query);
   }
 
   @UseGuards(JwtAuthGuard)

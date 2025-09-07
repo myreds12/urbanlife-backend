@@ -2,6 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 
 @Injectable()
 export class UsersService {
@@ -37,9 +38,35 @@ export class UsersService {
     }
   }
 
-  async findAll() {
+  async findAll(query: QueryParamsDto) {
     try {
-      return this.prisma.user.findMany();
+      const { take, page, is_admin, search } = query;
+      const skip = page * take - take;
+      const user = await this.prisma.user.findMany({
+        where: {
+          ...(is_admin && { role: { name: { not: 'user' } } }),
+          ...(search && {
+            OR: [{ email: { contains: search } }, { nama: { contains: search } }],
+          }),
+        },
+        skip,
+        take: take > 0 ? take : undefined,
+        orderBy: { createdAt: 'desc' },
+        include: { role: { select: { name: true } } },
+      });
+      return {
+        data: user,
+        meta: {
+          total: await this.prisma.user.count({
+            where: {
+              ...(is_admin && { role: { name: { not: 'user' } } }),
+            },
+          }),
+          page,
+          take,
+          takeTotal: user.length,
+        },
+      };
     } catch (error) {
       throw new Error('Error fetching users: ' + error.message);
     }

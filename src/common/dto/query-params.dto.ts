@@ -42,6 +42,10 @@ export class QueryParamsDto {
   @IsBoolean()
   @Transform(({ value }) => value === 'true')
   is_active?: boolean;
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  is_admin?: boolean;
 
   @IsOptional()
   offset?: number;
