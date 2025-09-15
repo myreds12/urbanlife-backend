@@ -21,6 +21,7 @@ export class TestimonialService {
       });
       return testimonial;
     } catch (error) {
+      console.log(error);
       throw error;
     }
   }

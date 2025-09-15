@@ -31,6 +31,7 @@ import { HeroSectionModule } from './hero-section/hero-section.module';
 import { TestimonialModule } from './testimonial/testimonial.module';
 import { OurPartnerModule } from './our-partner/our-partner.module';
 import { NotificationModule } from './notification/notification.module';
+import { PrivacyandpolicyModule } from './privacyandpolicy/privacyandpolicy.module';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { NotificationModule } from './notification/notification.module';
     TestimonialModule,
     OurPartnerModule,
     NotificationModule,
+    PrivacyandpolicyModule,
   ],
   controllers: [AppController],
   providers: [AppService],

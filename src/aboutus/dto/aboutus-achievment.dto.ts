@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class AboutusAchievmentDto {
   @IsOptional()
@@ -7,19 +7,15 @@ export class AboutusAchievmentDto {
   @IsNumber()
   id?: number;
 
-  @IsNotEmpty()
   @IsString()
   number: string;
 
-  @IsNotEmpty()
   @IsString()
   content_id: string;
 
-  @IsNotEmpty()
   @IsString()
   icon: string;
 
-  @IsNotEmpty()
   @IsString()
   content_en: string;
 }

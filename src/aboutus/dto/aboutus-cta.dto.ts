@@ -1,22 +1,25 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateAboutusCtaDto {
-  @IsNotEmpty()
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  id?: number;
   @IsString()
   title_id: string;
-  @IsNotEmpty()
   @IsString()
   title_en: string;
-  @IsNotEmpty()
   @IsString()
   description_id: string;
-  @IsNotEmpty()
   @IsString()
   description_en: string;
-  @IsNotEmpty()
   @IsString()
   button_text: string;
-  @IsNotEmpty()
   @IsString()
   button_url: string;
+  @IsString()
+  cta_button_text: string;
+  @IsString()
+  cta_button_url: string;
 }

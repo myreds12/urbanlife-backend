@@ -4,6 +4,7 @@ import { UpdateAboutusDto } from './dto/update-aboutus.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 import { unlinkSync } from 'fs';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AboutusService {
@@ -74,6 +75,8 @@ export class AboutusService {
               description_id: aboutus_cta.description_id,
               description_en: aboutus_cta.description_en,
               button_text: aboutus_cta.button_text,
+              cta_button_text: aboutus_cta.cta_button_text,
+              cta_button_url: aboutus_cta.cta_button_url,
               button_url: aboutus_cta.button_url,
             },
           },
@@ -177,60 +180,71 @@ export class AboutusService {
         aboutus_cta,
       } = updateAboutusDto;
 
-      const operationalUpsert = aboutus_operational.map(operational => ({
-        where: { id: operational.id },
-        update: {
-          day: operational.day,
-          time: operational.time,
-          is_highlight: operational.is_highlight ?? false,
-        },
-        create: {
-          day: operational.day,
-          time: operational.time,
-          is_highlight: operational.is_highlight ?? false,
-        },
-      }));
+      const operationalUpsert: Prisma.AboutUsOperationalUpsertWithWhereUniqueWithoutAbout_usInput[] =
+        aboutus_operational?.map(operational => ({
+          where: { id: operational?.id ?? 0, about_us_id: id },
+          update: {
+            day: operational.day,
+            time: operational.time,
+            is_highlight: operational.is_highlight ?? false,
+          },
+          create: {
+            day: operational.day,
+            time: operational.time,
+            is_highlight: operational.is_highlight ?? false,
+          },
+        })) ?? [];
 
-      const serviceUpsert = aboutus_service.map(service => ({
-        where: { id: service.id },
-        update: {
-          title_en: service.title_en,
-          title_id: service.title_id,
-          content_en: service.content_en,
-          content_id: service.content_id,
-          icon: service.icon,
-          location: service.location,
-        },
-        create: {
-          title_en: service.title_en,
-          title_id: service.title_id,
-          content_en: service.content_en,
-          content_id: service.content_id,
-          icon: service.icon,
-          location: service.location,
-        },
-      }));
+      console.log(operationalUpsert, 'operationalUpsert');
 
-      const achievmentUpsert = aboutus_achievment.map(achievment => ({
-        where: { id: achievment.id },
-        update: {
-          number: achievment.number,
-          content_en: achievment.content_en,
-          content_id: achievment.content_id,
-          icon: achievment.icon,
-        },
-        create: {
-          number: achievment.number,
-          content_en: achievment.content_en,
-          content_id: achievment.content_id,
-          icon: achievment.icon,
-        },
-      }));
+      const serviceUpsert: Prisma.AboutUsServicesUpsertWithWhereUniqueWithoutAbout_usInput[] =
+        aboutus_service?.map(service => ({
+          where: { id: service?.id ?? 0 },
+          update: {
+            title_en: service.title_en,
+            title_id: service.title_id,
+            content_en: service.content_en,
+            content_id: service.content_id,
+            icon: service.icon,
+            location: service.location,
+          },
+          create: {
+            title_en: service.title_en,
+            title_id: service.title_id,
+            content_en: service.content_en,
+            content_id: service.content_id,
+            icon: service.icon,
+            location: service.location,
+          },
+        })) ?? [];
 
-      const aboutUsFile = files.map(file => ({
-        nama_file: file.filename,
-        url: file.path,
-      }));
+      console.log(
+        'All service IDs:',
+        aboutus_service?.map(s => s.id),
+      );
+
+      const achievmentUpsert: Prisma.AboutUsAchievementsUpsertWithWhereUniqueWithoutAbout_usInput[] =
+        aboutus_achievment?.map(achievment => ({
+          where: { id: achievment?.id ?? 0 },
+          update: {
+            number: achievment.number,
+            content_en: achievment.content_en,
+            content_id: achievment.content_id,
+            icon: achievment.icon,
+          },
+          create: {
+            number: achievment.number,
+            content_en: achievment.content_en,
+            content_id: achievment.content_id,
+            icon: achievment.icon,
+          },
+        })) ?? [];
+
+      const aboutUsFile =
+        files?.map(file => ({
+          nama_file: file.filename,
+          url: file.path,
+        })) ?? [];
 
       const preservedOperationalIds = aboutus_operational?.filter(c => c.id).map(c => c.id) ?? [];
       const preservedServiceIds = aboutus_service?.filter(c => c.id).map(c => c.id) ?? [];
@@ -241,19 +255,19 @@ export class AboutusService {
         this.prismaService.aboutUsOperational.deleteMany({
           where: {
             about_us_id: id,
-            id: { notIn: preservedOperationalIds },
+            ...(preservedOperationalIds.length > 0 && { id: { notIn: preservedOperationalIds } }),
           },
         }),
         this.prismaService.aboutUsAchievements.deleteMany({
           where: {
             about_us_id: id,
-            id: { notIn: preservedAchievmentIds },
+            ...(preservedAchievmentIds.length > 0 && { id: { notIn: preservedAchievmentIds } }),
           },
         }),
         this.prismaService.aboutUsServices.deleteMany({
           where: {
             about_us_id: id,
-            id: { notIn: preservedServiceIds },
+            ...(preservedServiceIds.length > 0 && { id: { notIn: preservedServiceIds } }),
           },
         }),
         this.prismaService.aboutUsFile.deleteMany({
@@ -268,76 +282,65 @@ export class AboutusService {
             content_en,
             is_published,
             AboutUsOperational: {
-              upsert: operationalUpsert,
+              ...(operationalUpsert.length > 0 && { upsert: operationalUpsert }),
             },
-            AboutUsCta: {
-              update: {
-                title_id: aboutus_cta.title_id,
-                title_en: aboutus_cta.title_en,
-                description_id: aboutus_cta.description_id,
-                description_en: aboutus_cta.description_en,
-                button_text: aboutus_cta.button_text,
-                button_url: aboutus_cta.button_url,
-              },
-            },
-            AboutUsStory: {
-              update: {
-                content_en: aboutus_story.content_en,
-                content_id: aboutus_story.content_id,
-                title_en: aboutus_story.title_en,
-                title_id: aboutus_story.title_id,
-              },
-            },
+            AboutUsCta: aboutus_cta.id
+              ? {
+                  update: {
+                    title_id: aboutus_cta.title_id,
+                    title_en: aboutus_cta.title_en,
+                    description_id: aboutus_cta.description_id,
+                    description_en: aboutus_cta.description_en,
+                    button_text: aboutus_cta.button_text,
+                    cta_button_text: aboutus_cta.cta_button_text,
+                    cta_button_url: aboutus_cta.cta_button_url,
+                    button_url: aboutus_cta.button_url,
+                  },
+                }
+              : {
+                  create: {
+                    title_id: aboutus_cta.title_id,
+                    title_en: aboutus_cta.title_en,
+                    description_id: aboutus_cta.description_id,
+                    description_en: aboutus_cta.description_en,
+                    button_text: aboutus_cta.button_text,
+                    cta_button_text: aboutus_cta.cta_button_text,
+                    cta_button_url: aboutus_cta.cta_button_url,
+                    button_url: aboutus_cta.button_url,
+                  },
+                },
+
+            AboutUsStory: aboutus_story.id
+              ? {
+                  update: {
+                    content_en: aboutus_story.content_en,
+                    content_id: aboutus_story.content_id,
+                    title_en: aboutus_story.title_en,
+                    title_id: aboutus_story.title_id,
+                  },
+                }
+              : {
+                  create: {
+                    content_en: aboutus_story.content_en,
+                    content_id: aboutus_story.content_id,
+                    title_en: aboutus_story.title_en,
+                    title_id: aboutus_story.title_id,
+                  },
+                },
             AboutUsFile: {
               createMany: {
                 data: aboutUsFile,
               },
             },
             AboutUsServices: {
-              upsert: serviceUpsert,
+              ...(serviceUpsert.length > 0 && { upsert: serviceUpsert }),
             },
             AboutUsAchievements: {
-              upsert: achievmentUpsert,
+              ...(achievmentUpsert.length > 0 && { upsert: achievmentUpsert }),
             },
           },
         }),
       ]);
-
-      // Perbarui data di database
-      // const aboutus = await this.prismaService.aboutUs.update({
-      //   where: { id },
-      //   data: {
-      //     title_id,
-      //     title_en,
-      //     content_id,
-      //     content_en,
-      //     is_published,
-      //     AboutUsStory: {
-      //       update: {
-      //         content_en: aboutus_story.content_en,
-      //         content_id: aboutus_story.content_id,
-      //         title_en: aboutus_story.title_en,
-      //         title_id: aboutus_story.title_id,
-      //       },
-      //     },
-      //     AboutUsFile: {
-      //       createMany: {
-      //         data: aboutUsFile,
-      //       },
-      //     },
-      //     AboutUsServices: {
-      //       upsert: serviceUpsert,
-      //     },
-      //     AboutUsAchievements: {
-      //       update: {
-      //         number: aboutus_achievment.number,
-      //         content_en: aboutus_achievment.content_en,
-      //         content_id: aboutus_achievment.content_id,
-      //         icon: aboutus_achievment.icon,
-      //       },
-      //     },
-      //   },
-      // });
 
       return update;
     } catch (error) {
@@ -353,32 +356,24 @@ export class AboutusService {
         include: { AboutUsFile: true },
       });
 
-      // Hapus file terkait dari penyimpanan (jika ada)
-      aboutUsList.AboutUsFile.forEach(file => {
-        try {
-          unlinkSync(file.url); // Hapus file dari sistem file
-        } catch (err) {
-          console.error(`Failed to delete file: ${file.url}`, err);
-        }
+      console.log('aboutUsList : ', aboutUsList);
+
+      if (aboutUsList?.AboutUsFile && aboutUsList.AboutUsFile.length > 0) {
+        aboutUsList.AboutUsFile.forEach(file => {
+          try {
+            unlinkSync(file.url);
+          } catch (err) {
+            console.error(`Failed to delete file: ${file.url}`, err);
+          }
+        });
+      }
+
+      const aboutus = await this.prismaService.aboutUs.delete({
+        where: { id },
       });
-      // Hapus data dari database
-      const aboutus = await this.prismaService.$transaction([
-        this.prismaService.aboutUsFile.deleteMany({
-          where: { about_us_id: id },
-        }),
-        this.prismaService.aboutUsServices.deleteMany({
-          where: { about_us_id: id },
-        }),
-        this.prismaService.aboutUsAchievements.deleteMany({
-          where: { about_us_id: id },
-        }),
-        this.prismaService.aboutUsStory.deleteMany({
-          where: { about_us_id: id },
-        }),
-        this.prismaService.aboutUs.delete({
-          where: { id },
-        }),
-      ]);
+
+      console.log(aboutus, 'aboutus');
+
       return aboutus;
     } catch (error) {
       console.log(error);
