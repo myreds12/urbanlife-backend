@@ -361,7 +361,7 @@ export class PemesananService {
   async getAllPemesananItems(query: QueryParamsDto) {
     try {
       const {
-        take = 10,
+        take = 100,
         page = 1,
         is_category,
         date_from,
@@ -370,7 +370,7 @@ export class PemesananService {
         lokasi_ids,
         harga_min,
         harga_max,
-        services,
+        services = [], // filter tipe
         type,
         category_id,
         top_attraction,
@@ -379,6 +379,7 @@ export class PemesananService {
 
       const skip = (Number(page) - 1) * Number(take);
 
+      // Build bookedMap sama seperti sebelumnya
       const bookedMap = new Map<'KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE', number[]>();
 
       if (is_order === true) {
@@ -386,8 +387,6 @@ export class PemesananService {
         todayStart.setHours(0, 0, 0, 0);
         const todayEnd = new Date();
         todayEnd.setHours(23, 59, 59, 999);
-
-        console.log(todayStart, todayEnd);
 
         const bookedItems = await this.prismaService.pemesananItem.findMany({
           where: {
@@ -402,9 +401,7 @@ export class PemesananService {
           if (!bookedMap.has(key)) bookedMap.set(key, []);
           bookedMap.get(key)?.push(item_id);
         });
-        console.log(bookedMap, 'bookedMap');
       } else if (date_from && date_to) {
-        // Jika bukan is_order, gunakan filter tanggal dari query
         const bookedItems = await this.prismaService.pemesananItem.findMany({
           where: {
             tanggal_mulai: { lte: new Date(date_to) },
@@ -437,20 +434,21 @@ export class PemesananService {
         return Object.keys(filter).length ? { [fieldName]: filter } : {};
       };
 
-      const fetchKendaraan = !type || type === 'KENDARAAN';
-      const fetchAkomodasi = !type || type === 'AKOMODASI';
-      const fetchTravel = !type || type === 'TRAVEL_PACKAGE';
+      // Tentukan tipe yang akan di-fetch berdasarkan services dan type
+      const serviceTypes: ('KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE')[] =
+        Array.isArray(services) && services.length > 0
+          ? (services.filter(s =>
+              ['KENDARAAN', 'AKOMODASI', 'TRAVEL_PACKAGE'].includes(s as any),
+            ) as any)
+          : type
+            ? [type as any]
+            : ['KENDARAAN', 'AKOMODASI', 'TRAVEL_PACKAGE'];
 
-      const [
-        kendaraan,
-        akomodasi,
-        travelPackage,
-        kendaraanTotal,
-        akomodasiTotal,
-        travelPackageTotal,
-      ] = await Promise.all([
-        fetchKendaraan
-          ? this.prismaService.kendaraan.findMany({
+      // Fungsi fetch data per tipe tanpa pagination (ambil semua dulu)
+      const fetchDataByType = async (serviceType: 'KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE') => {
+        switch (serviceType) {
+          case 'KENDARAAN':
+            return this.prismaService.kendaraan.findMany({
               where: {
                 status: true,
                 status_pajak: true,
@@ -463,8 +461,6 @@ export class PemesananService {
                   some: buildHargaFilter('harga'),
                 },
               },
-              skip,
-              take: Number(take),
               select: {
                 id: true,
                 nama: true,
@@ -478,9 +474,7 @@ export class PemesananService {
                     id: true,
                     nama: true,
                     alamat: true,
-                    negara: {
-                      select: { id: true, nama: true, kode: true },
-                    },
+                    negara: { select: { id: true, nama: true, kode: true } },
                   },
                 },
                 kendaraan_content: {
@@ -495,14 +489,12 @@ export class PemesananService {
                 kendaraan_file: { select: { id: true, nama_file: true, url: true } },
                 kendaraan_durasi: { select: { id: true, durasi: true, harga: true } },
               },
-            })
-          : [],
-        fetchAkomodasi
-          ? this.prismaService.akomodasi.findMany({
+            });
+          case 'AKOMODASI':
+            return this.prismaService.akomodasi.findMany({
               where: {
                 status: true,
                 ...(top_attraction ? { top_attraction: true } : {}),
-
                 ...(bookedMap.has('AKOMODASI')
                   ? { id: { notIn: bookedMap.get('AKOMODASI')! } }
                   : {}),
@@ -510,22 +502,7 @@ export class PemesananService {
                 akomodasi_room_and_price: {
                   some: buildHargaFilter('harga'),
                 },
-                ...(services?.length
-                  ? {
-                      AND: services.map(service => ({
-                        akomodasi_facility_group: {
-                          some: {
-                            fasilitas: {
-                              some: { nama: { contains: service } },
-                            },
-                          },
-                        },
-                      })),
-                    }
-                  : {}),
               },
-              skip,
-              take: Number(take),
               select: {
                 id: true,
                 nama: true,
@@ -536,21 +513,15 @@ export class PemesananService {
                     id: true,
                     nama: true,
                     alamat: true,
-                    negara: {
-                      select: { id: true, nama: true, kode: true },
-                    },
+                    negara: { select: { id: true, nama: true, kode: true } },
                   },
                 },
-                akomodasi_room_and_price: {
-                  select: { id: true, nama: true, harga: true },
-                },
+                akomodasi_room_and_price: { select: { id: true, nama: true, harga: true } },
                 akomodasi_facility_group: {
                   select: {
                     id: true,
                     nama: true,
-                    fasilitas: {
-                      select: { id: true, nama: true, facility_group_id: true },
-                    },
+                    fasilitas: { select: { id: true, nama: true, facility_group_id: true } },
                   },
                 },
                 akomodasi_content: {
@@ -564,10 +535,9 @@ export class PemesananService {
                 },
                 akomodasi_file: { select: { id: true, nama_file: true, url: true } },
               },
-            })
-          : [],
-        fetchTravel
-          ? this.prismaService.travelPackage.findMany({
+            });
+          case 'TRAVEL_PACKAGE':
+            return this.prismaService.travelPackage.findMany({
               where: {
                 ...(top_attraction ? { top_attraction: true } : {}),
                 ...(bookedMap.has('TRAVEL_PACKAGE')
@@ -575,30 +545,21 @@ export class PemesananService {
                   : {}),
                 ...(category_id ? { category_id } : {}),
                 ...buildLokasiFilter(),
-                ...buildHargaFilter('harga_dewasa'), // atau harga_anak
+                ...buildHargaFilter('harga_dewasa'),
               },
-              skip,
-              take: Number(take),
               select: {
                 id: true,
                 nama: true,
                 harga_anak: true,
                 harga_dewasa: true,
                 durasi: true,
-                category: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
+                category: { select: { id: true, name: true } },
                 lokasi: {
                   select: {
                     id: true,
                     nama: true,
                     alamat: true,
-                    negara: {
-                      select: { id: true, nama: true, kode: true },
-                    },
+                    negara: { select: { id: true, nama: true, kode: true } },
                   },
                 },
                 travel_package_content: {
@@ -615,59 +576,17 @@ export class PemesananService {
                 },
                 travelPackageFile: { select: { id: true, nama_file: true, url: true } },
               },
-            })
-          : [],
-        fetchKendaraan
-          ? this.prismaService.kendaraan.count({
-              where: {
-                status: true,
-                ...(bookedMap.has('KENDARAAN')
-                  ? { id: { notIn: bookedMap.get('KENDARAAN')! } }
-                  : {}),
-                ...buildLokasiFilter(),
-                ...buildHargaFilter('harga'),
-              },
-            })
-          : 0,
-        fetchAkomodasi
-          ? this.prismaService.akomodasi.count({
-              where: {
-                status: true,
-                ...(bookedMap.has('AKOMODASI')
-                  ? { id: { notIn: bookedMap.get('AKOMODASI')! } }
-                  : {}),
-                ...buildLokasiFilter(),
-                ...buildHargaFilter('harga'),
-                ...(services?.length
-                  ? {
-                      AND: services.map(service => ({
-                        akomodasi_facility_group: {
-                          some: {
-                            fasilitas: {
-                              some: { nama: { contains: service } },
-                            },
-                          },
-                        },
-                      })),
-                    }
-                  : {}),
-              },
-            })
-          : 0,
-        fetchTravel
-          ? this.prismaService.travelPackage.count({
-              where: {
-                ...(bookedMap.has('TRAVEL_PACKAGE')
-                  ? { id: { notIn: bookedMap.get('TRAVEL_PACKAGE')! } }
-                  : {}),
-                ...buildLokasiFilter(),
-                ...buildHargaFilter('harga_dewasa'),
-              },
-            })
-          : 0,
-      ]);
+            });
+          default:
+            return [];
+        }
+      };
 
-      const kendaraanItems = kendaraan.map(k => ({
+      // Ambil data semua tipe yang diminta
+      const dataByType = await Promise.all(serviceTypes.map(fetchDataByType));
+
+      // Flatten dan map data ke bentuk standar
+      const kendaraanItems = (dataByType[serviceTypes.indexOf('KENDARAAN')] || []).map(k => ({
         id: k.id,
         nama: k.nama,
         harga: Number(k.harga),
@@ -683,7 +602,7 @@ export class PemesananService {
         durasi: k.kendaraan_durasi,
       }));
 
-      const akomodasiItems = akomodasi.map(a => ({
+      const akomodasiItems = (dataByType[serviceTypes.indexOf('AKOMODASI')] || []).map(a => ({
         id: a.id,
         nama: a.nama,
         harga: Number(a.harga) || 500000,
@@ -697,42 +616,52 @@ export class PemesananService {
         facility_group: a.akomodasi_facility_group,
       }));
 
-      const travelPackageItems = travelPackage.map(t => ({
-        id: t.id,
-        nama: t.nama,
-        harga_anak: Number(t.harga_anak),
-        harga_dewasa: Number(t.harga_dewasa),
-        durasi: t.durasi,
-        item_type: 'TRAVEL_PACKAGE',
-        content: t.travel_package_content,
-        itinerary: t.travel_package_itinerary,
-        file_name: t.travelPackageFile?.[0]?.nama_file ?? '',
-        file_url: t.travelPackageFile?.[0]?.url ?? '',
-        lokasi: t.lokasi,
-      }));
+      const travelPackageItems = (dataByType[serviceTypes.indexOf('TRAVEL_PACKAGE')] || []).map(
+        t => ({
+          id: t.id,
+          nama: t.nama,
+          harga_anak: Number(t.harga_anak),
+          harga_dewasa: Number(t.harga_dewasa),
+          durasi: t.durasi,
+          item_type: 'TRAVEL_PACKAGE',
+          content: t.travel_package_content,
+          itinerary: t.travel_package_itinerary,
+          file_name: t.travelPackageFile?.[0]?.nama_file ?? '',
+          file_url: t.travelPackageFile?.[0]?.url ?? '',
+          lokasi: t.lokasi,
+        }),
+      );
+
+      // Gabungkan semua item
+      const merged = [...kendaraanItems, ...akomodasiItems, ...travelPackageItems];
+
+      // Total data gabungan
+      const total = merged.length;
+
+      // Pagination di memory
+      const paginatedData = merged.slice(skip, skip + Number(take));
 
       if (is_category === 'true') {
+        // Jika ingin data per kategori, kembalikan per tipe lengkap tanpa pagination
         return {
           kendaraan: kendaraanItems,
           akomodasi: akomodasiItems,
           travel_package: travelPackageItems,
-          kendaraan_total: kendaraanTotal,
-          akomodasi_total: akomodasiTotal,
-          travel_package_total: travelPackageTotal,
+          kendaraan_total: kendaraanItems.length,
+          akomodasi_total: akomodasiItems.length,
+          travel_package_total: travelPackageItems.length,
           page: Number(page),
           take: Number(take),
         };
       }
 
-      const merged = [...kendaraanItems, ...akomodasiItems, ...travelPackageItems];
-
       return {
-        data: merged,
+        data: paginatedData,
         meta: {
-          total: kendaraanTotal + akomodasiTotal + travelPackageTotal,
+          total,
           page: Number(page),
           take: Number(take),
-          take_total: merged.length,
+          take_total: paginatedData.length,
         },
       };
     } catch (error) {
@@ -1215,10 +1144,17 @@ export class PemesananService {
   async getFilters() {
     const [kendaraanDurasi, akomodasiRoom, travelPackages] = await Promise.all([
       this.prismaService.kendaraanDurasi.findMany({
+        where: {
+          kendaraan: {
+            status: true,
+            status_pajak: true,
+          },
+        },
         select: {
           harga: true,
           kendaraan: {
             select: {
+              id: true, // Tambahkan id parent
               lokasi: {
                 select: {
                   id: true,
@@ -1233,10 +1169,16 @@ export class PemesananService {
         },
       }),
       this.prismaService.akomodasiRoomAndPrice.findMany({
+        where: {
+          akomodasi: {
+            status: true,
+          },
+        },
         select: {
           harga: true,
           akomodasi: {
             select: {
+              id: true, // Tambahkan id parent
               lokasi: {
                 select: {
                   id: true,
@@ -1252,6 +1194,7 @@ export class PemesananService {
       }),
       this.prismaService.travelPackage.findMany({
         select: {
+          id: true, // Tambahkan id parent
           harga_dewasa: true,
           harga_anak: true,
           lokasi: {
@@ -1269,6 +1212,7 @@ export class PemesananService {
 
     const countryMap = new Map<number, { id: number; name: string; count: number }>();
     const cityMap = new Map<number, { id: number; name: string; count: number }>();
+
     const addLocation = (
       map: Map<number, { id: number; name: string; count: number }>,
       id: number,
@@ -1281,7 +1225,6 @@ export class PemesananService {
       }
     };
 
-    // Prices accumulator
     const allPrices: number[] = [];
 
     const processItem = (lokasi: any, harga: number) => {
@@ -1292,7 +1235,7 @@ export class PemesananService {
       if (country) addLocation(countryMap, country.id, country.nama);
       if (city) addLocation(cityMap, city.id, city.nama);
 
-      if (typeof harga === 'number') allPrices.push(harga);
+      if (typeof harga === 'number' && !isNaN(harga)) allPrices.push(harga);
     };
 
     kendaraanDurasi.forEach(item => processItem(item.kendaraan?.lokasi, Number(item.harga)));
@@ -1307,10 +1250,19 @@ export class PemesananService {
     const totalCount = countries.reduce((sum, c) => sum + c.count, 0);
     countries.unshift({ id: 0, name: 'All', count: totalCount });
 
+    // Hitung jumlah parent unik untuk setiap service
+    const uniqueKendaraanIds = new Set(
+      kendaraanDurasi.map(item => item.kendaraan?.id).filter(Boolean),
+    );
+    const uniqueAkomodasiIds = new Set(
+      akomodasiRoom.map(item => item.akomodasi?.id).filter(Boolean),
+    );
+    const uniqueTravelPackageIds = new Set(travelPackages.map(item => item.id).filter(Boolean));
+
     const services = [
-      { name: 'Rent car', count: kendaraanDurasi.length, type: 'KENDARAAN' },
-      { name: 'Accommodation', count: akomodasiRoom.length, type: 'AKOMODASI' },
-      { name: 'Day tour', count: travelPackages.length, type: 'TRAVEL_PACKAGE' },
+      { name: 'Rent car', count: uniqueKendaraanIds.size, type: 'KENDARAAN' },
+      { name: 'Accommodation', count: uniqueAkomodasiIds.size, type: 'AKOMODASI' },
+      { name: 'Day tour', count: uniqueTravelPackageIds.size, type: 'TRAVEL_PACKAGE' },
     ];
 
     const price = {

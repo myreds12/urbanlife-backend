@@ -129,6 +129,12 @@ export class QueryParamsDto {
   services?: string[]; // misalnya "WiFi", "Breakfast", dst
 
   @IsOptional()
+  @IsArray()
+  @Type(() => String)
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  types?: string[];
+
+  @IsOptional()
   @IsNumber()
   @Type(() => Number)
   harga_min?: number;
