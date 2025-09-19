@@ -44,7 +44,7 @@ export class NegaraService {
 
       const negaraIds = negaraList.map(n => n.id);
 
-      // === Ambil total lokasi per negara ===
+      // Ambil total lokasi per negara
       const lokasi = await this.prismaService.lokasi.findMany({
         where: { negara_id: { in: negaraIds } },
         select: { id: true, negara_id: true },
@@ -58,10 +58,10 @@ export class NegaraService {
         {} as Record<number, number>,
       );
 
-      // === Ambil kendaraan dan map berdasarkan negara_id ===
+      // Ambil kendaraan per negara
       const kendaraan = await this.prismaService.kendaraan.findMany({
         where: { lokasi: { negara_id: { in: negaraIds } } },
-        select: { id: true, lokasi: { select: { negara_id: true } } },
+        select: { id: true, lokasi: { select: { id: true, negara_id: true } } },
       });
 
       const kendaraanByNegara = kendaraan.reduce(
@@ -75,10 +75,10 @@ export class NegaraService {
         {} as Record<number, number>,
       );
 
-      // === Ambil akomodasi ===
+      // Ambil akomodasi per negara
       const akomodasi = await this.prismaService.akomodasi.findMany({
         where: { lokasi: { negara_id: { in: negaraIds } } },
-        select: { id: true, lokasi: { select: { negara_id: true } } },
+        select: { id: true, lokasi: { select: { id: true, negara_id: true } } },
       });
 
       const akomodasiByNegara = akomodasi.reduce(
@@ -92,10 +92,10 @@ export class NegaraService {
         {} as Record<number, number>,
       );
 
-      // === Ambil travel package ===
+      // Ambil travel package per negara
       const travelPackages = await this.prismaService.travelPackage.findMany({
         where: { lokasi: { negara_id: { in: negaraIds } } },
-        select: { id: true, lokasi: { select: { negara_id: true } } },
+        select: { id: true, lokasi: { select: { id: true, negara_id: true } } },
       });
 
       const travelByNegara = travelPackages.reduce(
@@ -109,12 +109,151 @@ export class NegaraService {
         {} as Record<number, number>,
       );
 
-      // === Gabungkan semua ke dalam response ===
-      // === Gabungkan semua ke dalam response ===
+      // --- Hitung total_customer per negara ---
+
+      // Buat map item_id per negara untuk tiap tipe item
+      const kendaraanIdsByNegara = kendaraan.reduce(
+        (acc, curr) => {
+          const negaraId = curr.lokasi?.negara_id;
+          if (negaraId) {
+            if (!acc[negaraId]) acc[negaraId] = new Set<number>();
+            acc[negaraId].add(curr.id);
+          }
+          return acc;
+        },
+        {} as Record<number, Set<number>>,
+      );
+
+      // Ambil akomodasiRoomAndPrice dengan lokasi negara_id
+      const akomodasiRoomAndPrice = await this.prismaService.akomodasiRoomAndPrice.findMany({
+        where: {
+          akomodasi: {
+            lokasi: { negara_id: { in: negaraIds } },
+          },
+        },
+        select: {
+          id: true,
+          akomodasi: {
+            select: {
+              lokasi: {
+                select: { id: true, negara_id: true },
+              },
+            },
+          },
+        },
+      });
+
+      const akomodasiRoomIdsByNegara = akomodasiRoomAndPrice.reduce(
+        (acc, curr) => {
+          const negaraId = curr.akomodasi.lokasi.negara_id;
+          if (negaraId) {
+            if (!acc[negaraId]) acc[negaraId] = new Set<number>();
+            acc[negaraId].add(curr.id);
+          }
+          return acc;
+        },
+        {} as Record<number, Set<number>>,
+      );
+
+      const travelPackageIdsByNegara = travelPackages.reduce(
+        (acc, curr) => {
+          const negaraId = curr.lokasi?.negara_id;
+          if (negaraId) {
+            if (!acc[negaraId]) acc[negaraId] = new Set<number>();
+            acc[negaraId].add(curr.id);
+          }
+          return acc;
+        },
+        {} as Record<number, Set<number>>,
+      );
+
+      // Ambil semua pemesanan item yang item_id dan item_type sesuai
+      const pemesananItems = await this.prismaService.pemesananItem.findMany({
+        where: {
+          OR: [
+            { item_type: 'KENDARAAN', item_id: { in: kendaraan.map(k => k.id) } },
+            { item_type: 'AKOMODASI_ROOM', item_id: { in: akomodasiRoomAndPrice.map(a => a.id) } },
+            { item_type: 'TRAVEL_PACKAGE', item_id: { in: travelPackages.map(t => t.id) } },
+          ],
+        },
+        select: {
+          pemesanan_id: true,
+          item_type: true,
+          item_id: true,
+        },
+      });
+
+      // Map pemesanan_id ke negara_id berdasarkan item_type dan item_id
+      const pemesananIdToNegaraIds = new Map<number, Set<number>>();
+
+      pemesananItems.forEach(item => {
+        let negaraId: number | undefined;
+
+        if (item.item_type === 'KENDARAAN') {
+          for (const [nid, idSet] of Object.entries(kendaraanIdsByNegara)) {
+            if (idSet.has(item.item_id)) {
+              negaraId = Number(nid);
+              break;
+            }
+          }
+        } else if (item.item_type === 'AKOMODASI_ROOM') {
+          for (const [nid, idSet] of Object.entries(akomodasiRoomIdsByNegara)) {
+            if (idSet.has(item.item_id)) {
+              negaraId = Number(nid);
+              break;
+            }
+          }
+        } else if (item.item_type === 'TRAVEL_PACKAGE') {
+          for (const [nid, idSet] of Object.entries(travelPackageIdsByNegara)) {
+            if (idSet.has(item.item_id)) {
+              negaraId = Number(nid);
+              break;
+            }
+          }
+        }
+
+        if (negaraId !== undefined) {
+          if (!pemesananIdToNegaraIds.has(item.pemesanan_id)) {
+            pemesananIdToNegaraIds.set(item.pemesanan_id, new Set());
+          }
+          pemesananIdToNegaraIds.get(item.pemesanan_id)!.add(negaraId);
+        }
+      });
+
+      // Ambil pemesanan dengan user_id
+      const pemesananIds = Array.from(pemesananIdToNegaraIds.keys());
+      const pemesananList = await this.prismaService.pemesanan.findMany({
+        where: { id: { in: pemesananIds } },
+        select: { id: true, user_id: true },
+      });
+
+      // Map user_id per negara
+      const negaraToUserIds = new Map<number, Set<number>>();
+
+      pemesananList.forEach(pemesanan => {
+        const negaraIdsSet = pemesananIdToNegaraIds.get(pemesanan.id);
+        if (negaraIdsSet) {
+          negaraIdsSet.forEach(negaraId => {
+            if (!negaraToUserIds.has(negaraId)) {
+              negaraToUserIds.set(negaraId, new Set());
+            }
+            negaraToUserIds.get(negaraId)!.add(pemesanan.user_id);
+          });
+        }
+      });
+
+      // Hitung total_customer per negara
+      const customerByNegara: Record<number, number> = {};
+      negaraToUserIds.forEach((userSet, negaraId) => {
+        customerByNegara[negaraId] = userSet.size;
+      });
+
+      // Gabungkan semua data ke response
       const dataWithCounts = negaraList.map(n => {
         const total_kendaraan = kendaraanByNegara[n.id] || 0;
         const total_akomodasi = akomodasiByNegara[n.id] || 0;
         const total_travel_package = travelByNegara[n.id] || 0;
+        const total_customer = customerByNegara[n.id] || 0;
 
         return {
           ...n,
@@ -122,11 +261,11 @@ export class NegaraService {
           total_kendaraan,
           total_akomodasi,
           total_travel_package,
+          total_customer,
           total_all_items: total_kendaraan + total_akomodasi + total_travel_package,
         };
       });
 
-      // === Jika orderByMostItems, urutkan dari terbanyak ===
       if (orderByMostItems) {
         dataWithCounts.sort((a, b) => b.total_all_items - a.total_all_items);
       }
