@@ -32,6 +32,7 @@ import { TestimonialModule } from './testimonial/testimonial.module';
 import { OurPartnerModule } from './our-partner/our-partner.module';
 import { NotificationModule } from './notification/notification.module';
 import { PrivacyandpolicyModule } from './privacyandpolicy/privacyandpolicy.module';
+import { TermsandconditionModule } from './termsandcondition/termsandcondition.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { PrivacyandpolicyModule } from './privacyandpolicy/privacyandpolicy.modu
     OurPartnerModule,
     NotificationModule,
     PrivacyandpolicyModule,
+    TermsandconditionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

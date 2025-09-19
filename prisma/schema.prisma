@@ -66,7 +66,7 @@ model Kendaraan {
   tanggal_pajak_berakhir DateTime? @db.DateTime()
   harga                  Decimal   @default(0)
 
-  status_pajak   Boolean @default(false)
+  status_pajak   Boolean @default(true)
   status         Boolean @default(true)
   top_attraction Boolean @default(true)
   is_popular     Boolean @default(false)
@@ -265,6 +265,20 @@ model PrivacyAndPolicy {
   contact_title_en String @db.VarChar(250)
   contact_email    String @db.VarChar(250)
   contact_phone    String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+}
+
+model TermsAndCondition {
+  id Int @id @default(autoincrement())
+
+  title_id   String @db.VarChar(250)
+  title_en   String @db.VarChar(250)
+  content_id String @db.LongText
+  content_en String @db.LongText
+
+  is_active Boolean @default(false)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime?

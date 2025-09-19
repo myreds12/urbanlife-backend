@@ -418,11 +418,24 @@ export class PemesananService {
       }
 
       const buildLokasiFilter = () => {
-        if (!negara_ids?.length && !lokasi_ids?.length) return undefined;
+        // Cek apakah negara_ids valid dan bukan hanya [0]
+        const validNegaraIds =
+          Array.isArray(negara_ids) &&
+          negara_ids.length > 0 &&
+          !(negara_ids.length === 1 && Number(negara_ids[0]) === 0);
+
+        // Cek apakah lokasi_ids valid dan bukan hanya [0]
+        const validLokasiIds =
+          Array.isArray(lokasi_ids) &&
+          lokasi_ids.length > 0 &&
+          !(lokasi_ids.length === 1 && Number(lokasi_ids[0]) === 0);
+
+        if (!validNegaraIds && !validLokasiIds) return undefined;
+
         return {
           lokasi: {
-            ...(negara_ids?.length ? { negara_id: { in: negara_ids.map(Number) } } : {}),
-            ...(lokasi_ids?.length ? { id: { in: lokasi_ids.map(Number) } } : {}),
+            ...(validNegaraIds ? { negara_id: { in: negara_ids.map(Number) } } : {}),
+            ...(validLokasiIds ? { id: { in: lokasi_ids.map(Number) } } : {}),
           },
         };
       };
@@ -1154,7 +1167,7 @@ export class PemesananService {
           harga: true,
           kendaraan: {
             select: {
-              id: true, // Tambahkan id parent
+              id: true,
               lokasi: {
                 select: {
                   id: true,
@@ -1178,7 +1191,7 @@ export class PemesananService {
           harga: true,
           akomodasi: {
             select: {
-              id: true, // Tambahkan id parent
+              id: true,
               lokasi: {
                 select: {
                   id: true,
@@ -1194,7 +1207,7 @@ export class PemesananService {
       }),
       this.prismaService.travelPackage.findMany({
         select: {
-          id: true, // Tambahkan id parent
+          id: true,
           harga_dewasa: true,
           harga_anak: true,
           lokasi: {
@@ -1210,45 +1223,123 @@ export class PemesananService {
       }),
     ]);
 
-    const countryMap = new Map<number, { id: number; name: string; count: number }>();
-    const cityMap = new Map<number, { id: number; name: string; count: number }>();
-
-    const addLocation = (
-      map: Map<number, { id: number; name: string; count: number }>,
-      id: number,
-      name: string,
-    ) => {
-      if (!map.has(id)) {
-        map.set(id, { id, name, count: 1 });
-      } else {
-        map.get(id)!.count += 1;
-      }
+    type LocationEntry = {
+      id: number;
+      name: string;
+      parentIds: Set<number>;
     };
+
+    const countryMap = new Map<number, LocationEntry>();
+    const cityMap = new Map<number, LocationEntry>();
 
     const allPrices: number[] = [];
 
-    const processItem = (lokasi: any, harga: number) => {
-      if (!lokasi) return;
-      const country = lokasi.negara;
-      const city = lokasi;
+    const UNKNOWN_LOCATION_ID = 0;
+    const UNKNOWN_LOCATION_NAME = 'Unknown';
 
-      if (country) addLocation(countryMap, country.id, country.nama);
-      if (city) addLocation(cityMap, city.id, city.nama);
+    const kendaraanWithoutLocation = new Set<number>();
 
-      if (typeof harga === 'number' && !isNaN(harga)) allPrices.push(harga);
+    const addLocation = (
+      map: Map<number, LocationEntry>,
+      id: number,
+      name: string,
+      parentId: number,
+    ) => {
+      if (!map.has(id)) {
+        map.set(id, { id, name, parentIds: new Set([parentId]) });
+      } else {
+        map.get(id)!.parentIds.add(parentId);
+      }
     };
 
-    kendaraanDurasi.forEach(item => processItem(item.kendaraan?.lokasi, Number(item.harga)));
-    akomodasiRoom.forEach(item => processItem(item.akomodasi?.lokasi, Number(item.harga)));
-    travelPackages.forEach(item => {
-      processItem(item.lokasi, Number(item.harga_dewasa));
-      processItem(item.lokasi, Number(item.harga_anak));
+    // Proses kendaraanDurasi
+    kendaraanDurasi.forEach(item => {
+      const parentId = item.kendaraan?.id;
+      const lokasi = item.kendaraan?.lokasi;
+      if (parentId) {
+        if (lokasi) {
+          addLocation(countryMap, lokasi.negara.id, lokasi.negara.nama, parentId);
+          addLocation(cityMap, lokasi.id, lokasi.nama, parentId);
+        } else {
+          kendaraanWithoutLocation.add(parentId);
+        }
+      }
+      if (typeof item.harga === 'number' && !isNaN(item.harga)) allPrices.push(item.harga);
     });
 
-    const countries = Array.from(countryMap.values());
-    const cities = Array.from(cityMap.values());
-    const totalCount = countries.reduce((sum, c) => sum + c.count, 0);
-    countries.unshift({ id: 0, name: 'All', count: totalCount });
+    // Tambahkan kendaraan tanpa lokasi ke lokasi 'Unknown'
+    if (kendaraanWithoutLocation.size > 0) {
+      if (!countryMap.has(UNKNOWN_LOCATION_ID)) {
+        countryMap.set(UNKNOWN_LOCATION_ID, {
+          id: UNKNOWN_LOCATION_ID,
+          name: UNKNOWN_LOCATION_NAME,
+          parentIds: new Set(),
+        });
+      }
+      if (!cityMap.has(UNKNOWN_LOCATION_ID)) {
+        cityMap.set(UNKNOWN_LOCATION_ID, {
+          id: UNKNOWN_LOCATION_ID,
+          name: UNKNOWN_LOCATION_NAME,
+          parentIds: new Set(),
+        });
+      }
+      const countryEntry = countryMap.get(UNKNOWN_LOCATION_ID)!;
+      const cityEntry = cityMap.get(UNKNOWN_LOCATION_ID)!;
+      kendaraanWithoutLocation.forEach(id => {
+        countryEntry.parentIds.add(id);
+        cityEntry.parentIds.add(id);
+      });
+    }
+
+    // Proses akomodasiRoom
+    akomodasiRoom.forEach(item => {
+      const parentId = item.akomodasi?.id;
+      const lokasi = item.akomodasi?.lokasi;
+      if (parentId && lokasi) {
+        addLocation(countryMap, lokasi.negara.id, lokasi.negara.nama, parentId);
+        addLocation(cityMap, lokasi.id, lokasi.nama, parentId);
+      }
+      if (typeof item.harga === 'number' && !isNaN(item.harga)) allPrices.push(item.harga);
+    });
+
+    // Proses travelPackages
+    travelPackages.forEach(item => {
+      const parentId = item.id;
+      const lokasi = item.lokasi;
+      if (parentId && lokasi) {
+        addLocation(countryMap, lokasi.negara.id, lokasi.negara.nama, parentId);
+        addLocation(cityMap, lokasi.id, lokasi.nama, parentId);
+      }
+      if (typeof item.harga_dewasa === 'number' && !isNaN(item.harga_dewasa))
+        allPrices.push(item.harga_dewasa);
+      if (typeof item.harga_anak === 'number' && !isNaN(item.harga_anak))
+        allPrices.push(item.harga_anak);
+    });
+
+    // Konversi Map ke array dan hitung count berdasarkan ukuran Set parentIds
+    const countries = Array.from(countryMap.values()).map(({ parentIds, ...rest }) => ({
+      ...rest,
+      count: parentIds.size,
+    }));
+
+    const cities = Array.from(cityMap.values()).map(({ parentIds, ...rest }) => ({
+      ...rest,
+      count: parentIds.size,
+    }));
+
+    // Hitung union parentIds dari semua negara untuk "All"
+    const allCountryParentIds = new Set<number>();
+    countryMap.forEach(entry => {
+      entry.parentIds.forEach(id => allCountryParentIds.add(id));
+    });
+    countries.unshift({ id: 0, name: 'All', count: allCountryParentIds.size });
+
+    // Hitung union parentIds dari semua kota untuk "All" di cities (opsional)
+    const allCityParentIds = new Set<number>();
+    cityMap.forEach(entry => {
+      entry.parentIds.forEach(id => allCityParentIds.add(id));
+    });
+    cities.unshift({ id: 0, name: 'All', count: allCityParentIds.size });
 
     // Hitung jumlah parent unik untuk setiap service
     const uniqueKendaraanIds = new Set(
