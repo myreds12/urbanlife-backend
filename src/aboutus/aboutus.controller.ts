@@ -58,4 +58,13 @@ export class AboutusController {
   remove(@Param('id') id: string) {
     return this.aboutusService.remove(+id);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('bulk-delete')
+  async bulkDelete(@Body('ids') ids: number[]) {
+    if (!ids || ids.length === 0) {
+      throw new Error('No IDs provided for deletion');
+    }
+    return this.aboutusService.bulkDelete(ids);
+  }
 }

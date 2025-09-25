@@ -16,13 +16,13 @@ export class CreateTermsandconditionDto {
   @IsString()
   content_en: string;
 
-  @IsString()
-  @MaxLength(250)
-  contact_title_id: string;
+  // @IsString()
+  // @MaxLength(250)
+  // contact_title_id: string;
 
-  @IsString()
-  @MaxLength(250)
-  contact_title_en: string;
+  // @IsString()
+  // @MaxLength(250)
+  // contact_title_en: string;
 
   @IsOptional()
   @IsBoolean()

@@ -50,8 +50,19 @@ export class TermsandconditionService {
     }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} termsandcondition`;
+  // findOne(id: number) {
+  //   return `This action returns a #${id} termsandcondition`;
+  // }
+  async findOne(id: number) {
+    try {
+      const termsandcondition = await this.prismaService.termsAndCondition.findUnique({
+        where: { id },
+      });
+      return termsandcondition;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 
   async update(id: number, updateTermsandconditionDto: UpdateTermsandconditionDto) {

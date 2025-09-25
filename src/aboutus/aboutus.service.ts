@@ -380,4 +380,39 @@ export class AboutusService {
       throw error;
     }
   }
+
+  async bulkDelete(ids: number[]) {
+    try {
+      const aboutUsList = await this.prismaService.aboutUs.findMany({
+        where: { id: { in: ids } },
+        include: { AboutUsFile: true },
+      });
+
+      if (!aboutUsList || aboutUsList.length === 0) {
+        throw new Error('No about us entries found for the provided IDs');
+      }
+
+      aboutUsList.forEach((aboutUs) => {
+        if (aboutUs?.AboutUsFile && aboutUs.AboutUsFile.length > 0) {
+          aboutUs.AboutUsFile.forEach((file) => {
+            try {
+              unlinkSync(file.url);
+            } catch (err) {
+              console.error(`Failed to delete file: ${file.url}`, err);
+            }
+          });
+        }
+      });
+
+      const deletedAboutUs = await this.prismaService.aboutUs.deleteMany({
+        where: { id: { in: ids } },
+      });
+
+      console.log(`${deletedAboutUs.count} records deleted successfully`);
+      return { deletedCount: deletedAboutUs.count };
+    } catch (error) {
+      console.error('Error during bulk deletion:', error);
+      throw new Error(`Bulk deletion failed: ${error.message}`);
+    }
+  }
 }

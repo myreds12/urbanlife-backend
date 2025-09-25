@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { MailsService } from './mails.service';
 import { CreateMailDto } from './dto/create-mail.dto';
 import { UpdateMailDto } from './dto/update-mail.dto';
+import { ContactUsDto } from './dto/contactus-mail.dto';
 
 @Controller('mails')
 export class MailsController {
@@ -45,5 +46,10 @@ export class MailsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.mailsService.remove(+id);
+  }
+
+  @Post('contactus')
+  async sendContactUsEmail(@Body() contactUsDto: ContactUsDto) {
+    return this.mailsService.sendContactUsEmail(contactUsDto)
   }
 }

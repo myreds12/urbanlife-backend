@@ -24,6 +24,7 @@ export class TravelPackageService {
         category_id,
         guide_id,
         top_attraction,
+        travel_package_prices,
       } = createTravelPackageDto;
 
       //validasi guide
@@ -82,6 +83,14 @@ export class TravelPackageService {
             }))
           : [];
 
+      const TravelPackagePrices: Prisma.TravelPackagePricesCreateManyTravel_packageInput[] =
+        Array.isArray(createTravelPackageDto.travel_package_prices)
+          ? createTravelPackageDto.travel_package_prices.map(item => ({
+              description: item.description,
+              harga: item.harga,
+            }))
+          : [];
+
       const travelPackage = await this.prismaService.travelPackage.create({
         data: {
           nama,
@@ -117,6 +126,13 @@ export class TravelPackageService {
               data: travelPackageFiles,
             },
           },
+          ...(travel_package_prices && {
+            travel_package_prices: {
+              createMany: {
+                data: TravelPackagePrices,
+              },
+            },
+          }),
         },
         include: {
           lokasi: {
@@ -153,6 +169,13 @@ export class TravelPackageService {
               id: true,
               nama_file: true,
               url: true,
+            },
+          },
+          travel_package_prices: {
+            select: {
+              id: true,
+              description: true,
+              harga: true,
             },
           },
         },
@@ -289,6 +312,13 @@ export class TravelPackageService {
               url: true,
             },
           },
+          travel_package_prices: {
+            select: {
+              id: true,
+              description: true,
+              harga: true,
+            },
+          },
         },
       });
       return travelPackage;
@@ -313,6 +343,7 @@ export class TravelPackageService {
         top_attraction,
         category_id,
         travel_package_itinerary,
+        travel_package_prices,
       } = updateTravelPackageDto;
 
       // Validasi negara
@@ -333,6 +364,8 @@ export class TravelPackageService {
       console.log('preservedContentIds', preservedContentIds);
       const preservedItineraryIds =
         travel_package_itinerary?.filter(c => c.id).map(c => c.id) ?? [];
+      const preservedPricesIds =
+        travel_package_prices?.filter(c => c.id).map(c => c.id) ?? [];
 
       const upsertContent =
         travel_package_content?.map(item => ({
@@ -361,6 +394,19 @@ export class TravelPackageService {
             deskripsi: item.deskripsi,
             bahasa: item.bahasa,
             nama: item.nama,
+          },
+        })) ?? [];
+      
+      const upsertPrices =
+        travel_package_prices?.map(item => ({
+          where: { id: item.id ?? 0, travel_package_id: id },
+          update: {
+            description: item.description,
+            harga: item.harga,
+          },
+          create: {
+            description: item.description,
+            harga: item.harga,
           },
         })) ?? [];
 
@@ -392,6 +438,14 @@ export class TravelPackageService {
             travel_package_id: id,
             ...(preservedItineraryIds.length && {
               id: { notIn: preservedItineraryIds },
+            }),
+          },
+        }),
+        this.prismaService.travelPackagePrices.deleteMany({
+          where: {
+            travel_package_id: id,
+            ...(preservedPricesIds.length && {
+              id: { notIn: preservedPricesIds },
             }),
           },
         }),
@@ -428,6 +482,11 @@ export class TravelPackageService {
                 },
               },
             }),
+            ...(upsertPrices.length && {
+              travel_package_prices: {
+                upsert: upsertPrices,
+              },
+            }),
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -436,6 +495,7 @@ export class TravelPackageService {
             travel_package_content: true,
             travel_package_itinerary: true,
             travelPackageFile: true,
+            travel_package_prices: true,
           },
         }),
       ]);

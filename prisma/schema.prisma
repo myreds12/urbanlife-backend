@@ -488,6 +488,7 @@ model TravelPackage {
   pemesananPackage         PemesananPackage[]
   travelPackageFile        TravelPackageFile[]
   travel_package_itinerary TravelPackageItinerary[]
+  travel_package_prices TravelPackagePrices[]
 }
 
 model TravelPackageContent {
@@ -862,4 +863,16 @@ enum TipeAkomodasi {
   hotel
   eco_lodge
   guest_house
+}
+
+model TravelPackagePrices {
+  id                Int @id @default(autoincrement())
+  travel_package_id Int
+
+  description   String @db.VarChar(250)
+  harga                  Decimal   @default(0)
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime?
+  travel_package TravelPackage @relation(fields: [travel_package_id], references: [id])
 }

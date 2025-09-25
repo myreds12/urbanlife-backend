@@ -2,6 +2,7 @@ import { IsInt, IsNumber, IsOptional, IsString, Validate, ValidateNested } from 
 import { Type } from 'class-transformer';
 import { TravelPackageContentDto } from './travel-package-content.dto';
 import { TravelPackageItineraryDto } from './travel-package-itinerary.dto';
+import { TravelPackagePricesDto } from './travel-package-prices.dto';
 
 export class CreateTravelPackageDto {
   @Type(() => Number)
@@ -48,4 +49,8 @@ export class CreateTravelPackageDto {
     message: 'Kendaraan content must be a non-empty array',
   })
   travel_package_itinerary: TravelPackageItineraryDto[];
+  
+  @Type(() => TravelPackagePricesDto)
+  @ValidateNested({ each: true })
+  travel_package_prices: TravelPackagePricesDto[];
 }

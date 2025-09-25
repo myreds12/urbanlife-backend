@@ -588,6 +588,9 @@ export class PemesananService {
                   select: { id: true, deskripsi: true, bahasa: true, nama: true },
                 },
                 travelPackageFile: { select: { id: true, nama_file: true, url: true } },
+                travel_package_prices: {
+                  select: { id: true, description: true, harga: true},
+                },
               },
             });
           default:
@@ -642,6 +645,7 @@ export class PemesananService {
           file_name: t.travelPackageFile?.[0]?.nama_file ?? '',
           file_url: t.travelPackageFile?.[0]?.url ?? '',
           lokasi: t.lokasi,
+          package_prices: t.travel_package_prices,
         }),
       );
 

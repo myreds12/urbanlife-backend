@@ -3,6 +3,7 @@ import { CreateMailDto } from './dto/create-mail.dto';
 import { UpdateMailDto } from './dto/update-mail.dto';
 import { MailerService } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
+import { ContactUsDto } from './dto/contactus-mail.dto';
 
 @Injectable()
 export class MailsService {
@@ -233,5 +234,46 @@ export class MailsService {
   `;
 
     return this.sendTestEmail(to, subject, template, context);
+  }
+
+  async sendContactUsEmail(contactUsDto: ContactUsDto) {
+    const { to, name, email, inquiryType, subject, message } = contactUsDto
+
+    const template = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #4F46E5; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background: #f9f9f9; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        ul { padding-left: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Bantuan</h1>
+        </div>
+        <div class="content">
+          <h2>Hi urbanlife,</h2>
+          <p>Berikut Pertanyaan :</p>
+          <p>Pengirim : ${name}</p>
+          <p>Email: ${email}</p>
+          <p>Type: ${inquiryType}</p>
+          <p>Subject: ${subject}</p>
+          <p>Message: ${message}</p>
+        </div>
+        <div class="footer">
+          <p>&copy; 2024 Your Company. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+    return this.sendTestEmail(to, subject, template, { name, email, inquiryType, subject, message });
   }
 }
