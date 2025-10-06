@@ -237,7 +237,7 @@ export class MailsService {
   }
 
   async sendContactUsEmail(contactUsDto: ContactUsDto) {
-    const { to, name, email, inquiryType, subject, message } = contactUsDto
+    const { to, name, email, inquiryType, subject, message } = contactUsDto;
 
     const template = `
     <!DOCTYPE html>
@@ -274,6 +274,12 @@ export class MailsService {
     </html>
   `;
 
-    return this.sendTestEmail(to, subject, template, { name, email, inquiryType, subject, message });
+    return this.sendTestEmail(to, subject, template, {
+      name,
+      email,
+      inquiryType,
+      subject,
+      message,
+    });
   }
 }

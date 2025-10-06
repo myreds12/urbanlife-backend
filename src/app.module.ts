@@ -33,6 +33,7 @@ import { OurPartnerModule } from './our-partner/our-partner.module';
 import { NotificationModule } from './notification/notification.module';
 import { PrivacyandpolicyModule } from './privacyandpolicy/privacyandpolicy.module';
 import { TermsandconditionModule } from './termsandcondition/termsandcondition.module';
+import { LogoModule } from './logo/logo.module';
 
 @Module({
   imports: [
@@ -87,6 +88,7 @@ import { TermsandconditionModule } from './termsandcondition/termsandcondition.m
     NotificationModule,
     PrivacyandpolicyModule,
     TermsandconditionModule,
+    LogoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

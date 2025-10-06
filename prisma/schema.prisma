@@ -29,6 +29,16 @@ model User {
   AdminWa           AdminWa[]
 }
 
+model Logo {
+  id        Int    @id @default(autoincrement())
+  nama_file String @db.VarChar(250)
+  url       String @db.VarChar(250)
+  is_active Boolean @default(true)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+}
+
 model OurPartner {
   id        Int    @id @default(autoincrement())
   nama      String @db.VarChar(250)
