@@ -1,5 +1,5 @@
-import { IsInt, IsNumber, IsOptional, IsString, Validate, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsArray, IsInt, IsNumber, IsOptional, IsString, Validate, ValidateNested } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { TravelPackageContentDto } from './travel-package-content.dto';
 import { TravelPackageItineraryDto } from './travel-package-itinerary.dto';
 import { TravelPackagePricesDto } from './travel-package-prices.dto';
@@ -53,4 +53,9 @@ export class CreateTravelPackageDto {
   @Type(() => TravelPackagePricesDto)
   @ValidateNested({ each: true })
   travel_package_prices: TravelPackagePricesDto[];
+
+  @IsOptional()
+  @IsArray()
+  @Transform(({ value }) => (value ? value.map((item: string) => parseInt(item, 10)) : []), { toClassOnly: true })
+  travel_package_deleted_itinerary_file?: number[];
 }

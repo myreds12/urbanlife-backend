@@ -17,6 +17,7 @@ import { UpdateKendaraanDto } from './dto/update-kendaraan.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
+import { UpdatePopularStatusDto } from './dto/update-popular-status.dto';
 
 @Controller('kendaraan')
 export class KendaraanController {
@@ -68,5 +69,18 @@ export class KendaraanController {
   @Delete()
   remove(@Body('ids') ids: number[]) {
     return this.kendaraanService.remove(ids);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('update-popular-status/:id')
+  async updatePopularStatus(
+    @Param('id') id: string,
+    @Body() updatePopularStatusDto: UpdatePopularStatusDto,
+  ) {
+      const updatedStatus = {
+      ...updatePopularStatusDto,
+      id: Number(id),
+    };
+    return this.kendaraanService.updatePopularStatus(updatedStatus);
   }
 }

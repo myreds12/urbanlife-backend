@@ -17,6 +17,7 @@ import { UpdateAkomodasiDto } from './dto/update-akomodasi.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
+import { UpdatePopularStatusDto } from './dto/update-popular-status.dto';
 
 @Controller('akomodasi')
 export class AkomodasiController {
@@ -74,5 +75,18 @@ export class AkomodasiController {
   @Delete()
   remove(@Body('ids') ids: number[]) {
     return this.akomodasiService.remove(ids);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('update-popular-status/:id')
+  async updatePopularStatus(
+    @Param('id') id: string,
+    @Body() updatePopularStatusDto: UpdatePopularStatusDto,
+  ) {
+      const updatedStatus = {
+      ...updatePopularStatusDto,
+      id: Number(id),
+    };
+    return this.akomodasiService.updatePopularStatus(updatedStatus);
   }
 }

@@ -5,6 +5,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 import { unlinkSync } from 'fs';
+import { UpdatePopularStatusDto } from './dto/update-popular-status.dto';
 
 @Injectable()
 export class KendaraanService {
@@ -479,5 +480,22 @@ export class KendaraanService {
 
       throw error;
     }
+  }
+
+  async updatePopularStatus(updatePopularStatusDto: UpdatePopularStatusDto) {
+    const { id, is_popular } = updatePopularStatusDto;
+
+    const kendaraan = await this.prismaService.kendaraan.findUnique({
+      where: { id },
+    });
+
+    if (!kendaraan) {
+      throw new NotFoundException('Kendaraan not found');
+    }
+
+    return this.prismaService.kendaraan.update({
+      where: { id },
+      data: { is_popular },
+    });
   }
 }

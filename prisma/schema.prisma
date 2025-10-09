@@ -33,6 +33,7 @@ model Logo {
   id        Int    @id @default(autoincrement())
   nama_file String @db.VarChar(250)
   url       String @db.VarChar(250)
+  type      String @db.VarChar(250)
   is_active Boolean @default(true)
 
   createdAt DateTime  @default(now())
@@ -528,6 +529,7 @@ model TravelPackageItinerary {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime?
   travel_package TravelPackage @relation(fields: [travel_package_id], references: [id])
+  itinerary_files     TravelPackageItineraryFile[]
 }
 
 model TravelPackageFile {
@@ -885,4 +887,17 @@ model TravelPackagePrices {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime?
   travel_package TravelPackage @relation(fields: [travel_package_id], references: [id])
+}
+
+model TravelPackageItineraryFile {
+  id                         Int                      @id @default(autoincrement())
+  travel_package_itinerary_id Int
+
+  nama_file                   String                   @db.VarChar(250)
+  url                        String                   @db.VarChar(250)
+
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime?                @updatedAt
+
+  travelPackageItinerary     TravelPackageItinerary   @relation(fields: [travel_package_itinerary_id], references: [id])
 }

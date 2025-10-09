@@ -4,6 +4,7 @@ import { UpdateAkomodasiDto } from './dto/update-akomodasi.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 import { unlinkSync } from 'fs';
+import { UpdatePopularStatusDto } from './dto/update-popular-status.dto';
 
 @Injectable()
 export class AkomodasiService {
@@ -143,7 +144,7 @@ export class AkomodasiService {
     try {
       const { take, page, type } = query;
       const where = {
-        ...(type && { kategori: type }),
+        ...(type && { tipe: type }),
       };
       const count = await this.prismaService.akomodasi.count();
       const akomodasis = await this.prismaService.akomodasi.findMany({
@@ -499,5 +500,22 @@ export class AkomodasiService {
       console.log(error);
       throw error;
     }
+  }
+
+  async updatePopularStatus(updatePopularStatusDto: UpdatePopularStatusDto) {
+    const { id, is_popular } = updatePopularStatusDto;
+
+    const akomodasi = await this.prismaService.akomodasi.findUnique({
+      where: { id },
+    });
+
+    if (!akomodasi) {
+      throw new NotFoundException('Akomodasi not found');
+    }
+
+    return this.prismaService.akomodasi.update({
+      where: { id },
+      data: { is_popular },
+    });
   }
 }

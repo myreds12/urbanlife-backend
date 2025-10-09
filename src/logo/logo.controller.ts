@@ -1,47 +1,29 @@
 import {
   Controller,
-  Get,
   Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  UploadedFiles,
+  Get,
   UseInterceptors,
-  UploadedFile,
+  UploadedFiles,
+  Body,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { LogoService } from './logo.service';
-import { CreateLogoDto } from './dto/create-logo.dto';
-import { UpdateLogoDto } from './dto/update-logo.dto';
-import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('logo')
 export class LogoController {
   constructor(private readonly logoService: LogoService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
-  create(@Body() createLogoDto: CreateLogoDto, @UploadedFile() file: Express.Multer.File) {
-    return this.logoService.create(createLogoDto, file);
+  @UseInterceptors(FilesInterceptor('files', 2))
+  async uploadLogo(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: any,
+  ) {
+    return this.logoService.createOrUpdate(files, body);
   }
 
   @Get()
-  findAll() {
+  async findAll() {
     return this.logoService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.logoService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateLogoDto: UpdateLogoDto) {
-    return this.logoService.update(+id, updateLogoDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.logoService.remove(+id);
   }
 }

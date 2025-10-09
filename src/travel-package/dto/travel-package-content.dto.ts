@@ -16,5 +16,9 @@ export class TravelPackageContentDto {
 
   @IsOptional()
   @IsString()
+  kebijakan?: string;
+
+  @IsOptional()
+  @IsString()
   itinerary?: string;
 }

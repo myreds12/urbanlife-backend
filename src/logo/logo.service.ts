@@ -1,73 +1,88 @@
 import { Injectable } from '@nestjs/common';
-import { CreateLogoDto } from './dto/create-logo.dto';
-import { UpdateLogoDto } from './dto/update-logo.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class LogoService {
-  constructor(private readonly prismaService: PrismaService) {}
-  async create(createLogoDto: CreateLogoDto, file: Express.Multer.File) {
-    try {
-      if (!file) {
-        throw new Error('File is required');
-      }
-      const logo = await this.prismaService.logo.create({
-        data: {
-          nama_file: file.filename,
-          url: file.path,
-        },
-      });
-      return logo;
-    } catch (error) {
-      throw error;
+  constructor(private prisma: PrismaService) {}
+
+  async createOrUpdate(files: Express.Multer.File[], body: any) {
+    if (!files || files.length === 0) {
+      return { message: 'No files uploaded' };
     }
+
+    let types: string[] = [];
+
+    try {
+      const parsed = JSON.parse(body.types || '[]');
+      types = Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      if (typeof body.types === 'string' && body.types.length > 0) {
+        types = body.types.includes(',')
+          ? body.types.split(',').map((t) => t.trim())
+          : [body.types];
+      }
+    }
+
+    if (types.length < files.length) {
+      const defaults = ['logo', 'favicon'];
+      for (let i = types.length; i < files.length; i++) {
+        types.push(defaults[i] || 'logo');
+      }
+    }
+
+    const results = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const type = types[i] || 'logo';
+      const url = `/uploads/logo/${file.filename}`;
+      const nama_file = file.filename;
+
+      const existing = await this.prisma.logo.findFirst({ where: { type } });
+
+      if (existing) {
+        const oldFilePath = path.join(process.cwd(), 'uploads', 'logo', existing.nama_file);
+        if (fs.existsSync(oldFilePath)) {
+          try {
+            fs.unlinkSync(oldFilePath);
+            console.log(`🗑️ File lama dihapus: ${existing.nama_file}`);
+          } catch (err) {
+            console.error('⚠️ Gagal hapus file lama:', err.message);
+          }
+        }
+
+        const updated = await this.prisma.logo.update({
+          where: { id: existing.id },
+          data: {
+            nama_file,
+            url,
+            updatedAt: new Date(),
+          },
+        });
+
+        results.push(updated);
+      } else {
+        const created = await this.prisma.logo.create({
+          data: {
+            nama_file,
+            url,
+            type,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        });
+        results.push(created);
+      }
+    }
+
+    return { message: 'Upload successful', data: results };
   }
 
   async findAll() {
-    try {
-      const logos = await this.prismaService.logo.findMany();
-      return logos;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async findOne(id: number) {
-    try {
-      const logo = await this.prismaService.logo.findUnique({
-        where: { id },
-      });
-      return logo;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async update(id: number, updateLogoDto: UpdateLogoDto, file?: Express.Multer.File) {
-    try {
-      const data: any = { ...updateLogoDto };
-      if (file) {
-        data.nama_file = file.originalname;
-        data.url = file.path;
-      }
-      const logo = await this.prismaService.logo.update({
-        where: { id },
-        data,
-      });
-      return logo;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async remove(id: number) {
-    try {
-      const logo = await this.prismaService.logo.delete({
-        where: { id },
-      });
-      return logo;
-    } catch (error) {
-      throw error;
-    }
+    return this.prisma.logo.findMany({
+      orderBy: { id: 'asc' },
+    });
   }
 }

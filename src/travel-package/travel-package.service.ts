@@ -5,13 +5,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 import { unlinkSync } from 'fs';
+import { UpdatePopularStatusDto } from './dto/update-popular-status.dto';
 
 @Injectable()
 export class TravelPackageService {
   constructor(private readonly prismaService: PrismaService) {}
   private logger = new Logger(TravelPackageService.name);
 
-  async create(createTravelPackageDto: CreateTravelPackageDto, files: Express.Multer.File[]) {
+  async create(createTravelPackageDto: CreateTravelPackageDto, files: Record<string, Express.Multer.File>) {
     try {
       const {
         nama,
@@ -26,7 +27,7 @@ export class TravelPackageService {
         top_attraction,
         travel_package_prices,
       } = createTravelPackageDto;
-
+      
       //validasi guide
       if (guide_id) {
         const guide = await this.prismaService.guide.findUnique({
@@ -59,17 +60,18 @@ export class TravelPackageService {
         }
       }
 
-      const travelPackageFiles = files.map(file => {
-        return {
-          nama_file: file.filename,
-          url: file.path,
-        };
-      });
+      // const travelPackageFiles = files.map(file => {
+      //   return {
+      //     nama_file: file.filename,
+      //     url: file.path,
+      //   };
+      // });
 
       const travelPackageContent = Array.isArray(createTravelPackageDto.travel_package_content)
         ? createTravelPackageDto.travel_package_content.map(item => ({
             deskripsi: item.deskripsi,
             bahasa: item.bahasa,
+            kebijakan: item.kebijakan,
             itinerary: item?.itinerary ?? '',
           }))
         : [];
@@ -90,6 +92,13 @@ export class TravelPackageService {
               harga: item.harga,
             }))
           : [];
+
+      const travelPackageItineraryFiles = Object.keys(files)
+        .filter((key) => key.startsWith('travel_package_itinerary'))
+        .map((key) => ({
+          itineraryIndex: parseInt(key.split('[')[1].split(']')[0]),
+          files: files[key],
+        }));
 
       const travelPackage = await this.prismaService.travelPackage.create({
         data: {
@@ -121,11 +130,11 @@ export class TravelPackageService {
               },
             },
           }),
-          travelPackageFile: {
-            createMany: {
-              data: travelPackageFiles,
-            },
-          },
+          // travelPackageFile: {
+          //   createMany: {
+          //     data: travelPackageFiles,
+          //   },
+          // },
           ...(travel_package_prices && {
             travel_package_prices: {
               createMany: {
@@ -180,6 +189,24 @@ export class TravelPackageService {
           },
         },
       });
+
+      const travelPackageId = travelPackage.id;
+
+      for (const { itineraryIndex, files } of travelPackageItineraryFiles) {
+        const fileArray = Array.isArray(files) ? files : [files];
+
+        const itineraryId = travelPackage.travel_package_itinerary[itineraryIndex].id;
+
+        const fileData = fileArray.map(file => ({
+          nama_file: file.filename,
+          url: file.path,
+          travel_package_itinerary_id: travelPackage.travel_package_itinerary[itineraryIndex].id,
+        }));
+
+        await this.prismaService.travelPackageItineraryFile.createMany({
+          data: fileData,
+        });
+      }
 
       return travelPackage;
     } catch (error) {
@@ -303,6 +330,13 @@ export class TravelPackageService {
               bahasa: true,
               deskripsi: true,
               nama: true,
+              itinerary_files: {
+                select: {
+                  id: true,
+                  nama_file: true,
+                  url: true,
+                },
+              },
             },
           },
           travelPackageFile: {
@@ -330,7 +364,7 @@ export class TravelPackageService {
   async update(
     id: number,
     updateTravelPackageDto: UpdateTravelPackageDto,
-    files: Express.Multer.File[],
+    files: Record<string, Express.Multer.File>
   ) {
     try {
       const {
@@ -344,6 +378,7 @@ export class TravelPackageService {
         category_id,
         travel_package_itinerary,
         travel_package_prices,
+        travel_package_deleted_itinerary_file,
       } = updateTravelPackageDto;
 
       // Validasi negara
@@ -373,11 +408,13 @@ export class TravelPackageService {
           update: {
             deskripsi: item.deskripsi,
             bahasa: item.bahasa,
+            kebijakan: item.kebijakan,
             itinerary: item?.itinerary ?? '',
           },
           create: {
             deskripsi: item.deskripsi,
             bahasa: item.bahasa,
+            kebijakan: item.kebijakan,
             itinerary: item?.itinerary ?? '',
           },
         })) ?? [];
@@ -410,11 +447,18 @@ export class TravelPackageService {
           },
         })) ?? [];
 
-      const fileData =
-        files?.map(file => ({
-          nama_file: file.filename,
-          url: file.path,
-        })) ?? [];
+      // const fileData =
+      //   files?.map(file => ({
+      //     nama_file: file.filename,
+      //     url: file.path,
+      //   })) ?? [];
+
+      const travelPackageItineraryFiles = Object.keys(files)
+        .filter((key) => key.startsWith('travel_package_itinerary'))
+        .map((key) => ({
+          itineraryIndex: parseInt(key.split('[')[1].split(']')[0]),
+          files: files[key],
+        }));
 
       // Jalankan transaksi update
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -475,13 +519,13 @@ export class TravelPackageService {
                 upsert: upsertItinerary,
               },
             }),
-            ...(fileData.length && {
-              travelPackageFile: {
-                createMany: {
-                  data: fileData,
-                },
-              },
-            }),
+            // ...(fileData.length && {
+            //   travelPackageFile: {
+            //     createMany: {
+            //       data: fileData,
+            //     },
+            //   },
+            // }),
             ...(upsertPrices.length && {
               travel_package_prices: {
                 upsert: upsertPrices,
@@ -502,15 +546,60 @@ export class TravelPackageService {
 
       //Menghapus file secara lokal sesuai dengan data base
 
-      const existingFiles = await this.prismaService.travelPackageFile.findMany({
-        where: { travel_package_id: id },
+      // const existingFiles = await this.prismaService.travelPackageFile.findMany({
+      //   where: { travel_package_id: id },
+      // });
+
+      // existingFiles.forEach(file => {
+      //   if (!fileData.find(f => f.url === file.url)) {
+      //     unlinkSync(file.url);
+      //   }
+      // });
+
+      const newPackage = await this.prismaService.travelPackage.findUnique({
+        where: { id },
+        include: {
+          travel_package_itinerary: true,
+        },
       });
 
-      existingFiles.forEach(file => {
-        if (!fileData.find(f => f.url === file.url)) {
-          unlinkSync(file.url);
-        }
-      });
+      const travelPackageId = newPackage.id;
+
+      for (const { itineraryIndex, files } of travelPackageItineraryFiles) {
+        const fileArray = Array.isArray(files) ? files : [files];
+
+        const itineraryId = newPackage.travel_package_itinerary[itineraryIndex].id;
+
+        const fileData = fileArray.map(file => ({
+          nama_file: file.filename,
+          url: file.path,
+          travel_package_itinerary_id: newPackage.travel_package_itinerary[itineraryIndex].id,
+        }));
+
+        await this.prismaService.travelPackageItineraryFile.createMany({
+          data: fileData,
+        });
+      }
+
+      if (travel_package_deleted_itinerary_file && travel_package_deleted_itinerary_file.length > 0) {
+        const filesToDelete = await this.prismaService.travelPackageItineraryFile.findMany({
+          where: { id: { in: travel_package_deleted_itinerary_file } },
+        });
+
+        filesToDelete.forEach((file) => {
+          try {
+            unlinkSync(file.url);
+          } catch (err) {
+            console.error(`Failed to delete file: ${file.url}`, err);
+          }
+        });
+
+        await this.prismaService.travelPackageItineraryFile.deleteMany({
+          where: {
+            id: { in: travel_package_deleted_itinerary_file },
+          },
+        });
+      }
 
       return updatedPackage;
     } catch (error) {
@@ -560,5 +649,22 @@ export class TravelPackageService {
     } catch (error) {
       throw error;
     }
+  }
+
+  async updatePopularStatus(updatePopularStatusDto: UpdatePopularStatusDto) {
+    const { id, is_popular } = updatePopularStatusDto;
+
+    const travelPackage = await this.prismaService.travelPackage.findUnique({
+      where: { id },
+    });
+
+    if (!travelPackage) {
+      throw new NotFoundException('Travel package not found');
+    }
+
+    return this.prismaService.travelPackage.update({
+      where: { id },
+      data: { is_popular },
+    });
   }
 }

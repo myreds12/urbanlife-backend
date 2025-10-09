@@ -14,9 +14,10 @@ import {
 import { TravelPackageService } from './travel-package.service';
 import { CreateTravelPackageDto } from './dto/create-travel-package.dto';
 import { UpdateTravelPackageDto } from './dto/update-travel-package.dto';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { AnyFilesInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
+import { UpdatePopularStatusDto } from './dto/update-popular-status.dto';
 
 @Controller('travel-package')
 export class TravelPackageController {
@@ -24,12 +25,24 @@ export class TravelPackageController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  @UseInterceptors(FilesInterceptor('files'))
+  @UseInterceptors(AnyFilesInterceptor())
   create(
     @Body() createTravelPackageDto: CreateTravelPackageDto,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: Array<Express.Multer.File>,
   ) {
-    return this.travelPackageService.create(createTravelPackageDto, files);
+    const groupedFiles = {};
+
+    files.forEach(file => {
+      const fieldname = file.fieldname;
+      
+      if (!groupedFiles[fieldname]) {
+        groupedFiles[fieldname] = [];
+      }
+      
+      groupedFiles[fieldname].push(file);
+    });
+  
+    return this.travelPackageService.create(createTravelPackageDto, groupedFiles)
   }
 
   // @UseGuards(JwtAuthGuard)
@@ -45,18 +58,43 @@ export class TravelPackageController {
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  @UseInterceptors(FilesInterceptor('files'))
-  update(
+  @UseInterceptors(AnyFilesInterceptor())
+  async update(
     @Param('id') id: string,
     @Body() updateTravelPackageDto: UpdateTravelPackageDto,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: Array<Express.Multer.File>,
   ) {
-    return this.travelPackageService.update(+id, updateTravelPackageDto, files);
+    const groupedFiles = {};
+
+    files.forEach(file => {
+      const fieldname = file.fieldname;
+      
+      if (!groupedFiles[fieldname]) {
+        groupedFiles[fieldname] = [];
+      }
+      
+      groupedFiles[fieldname].push(file);
+    });
+
+    return this.travelPackageService.update(+id, updateTravelPackageDto, groupedFiles);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Body('ids') ids: number[]) {
     return this.travelPackageService.remove(ids);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('update-popular-status/:id')
+  async updatePopularStatus(
+    @Param('id') id: string,
+    @Body() updatePopularStatusDto: UpdatePopularStatusDto,
+  ) {
+     const updatedStatus = {
+      ...updatePopularStatusDto,
+      id: Number(id),
+    };
+    return this.travelPackageService.updatePopularStatus(updatedStatus);
   }
 }
