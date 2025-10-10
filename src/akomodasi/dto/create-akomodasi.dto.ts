@@ -35,7 +35,9 @@ export class CreateAkomodasiDto {
   tipe?: AkomodasiType;
 
   @IsOptional()
-  status?: boolean = false;
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  status?: boolean;
 
   @IsOptional()
   @IsBoolean()
