@@ -63,7 +63,6 @@ export class AuthService {
         secret,
       },
     );
-    console.log('Access Token:', accessToken);
     const role = roleUser ? roleUser : 'user'; // Default to 'user' if no role is provided
     const expriresIn = expired || JwtConfig.user_expired;
     return {

@@ -58,6 +58,7 @@ import { LogoModule } from './logo/logo.module';
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: '.env',
     }),
     RoleModule,
     PrismaModule,
