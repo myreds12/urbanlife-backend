@@ -237,9 +237,10 @@ export class MailsService {
   }
 
   async sendContactUsEmail(contactUsDto: ContactUsDto) {
-    const { to, name, email, inquiryType, subject, message } = contactUsDto;
+    try {
+      const { to, name, email, inquiryType, subject, message } = contactUsDto;
 
-    const template = `
+      const template = `
     <!DOCTYPE html>
     <html>
     <head>
@@ -255,11 +256,10 @@ export class MailsService {
     <body>
       <div class="container">
         <div class="header">
-          <h1>Bantuan</h1>
+          <h1>${subject}</h1>
         </div>
         <div class="content">
           <h2>Hi urbanlife,</h2>
-          <p>Berikut Pertanyaan :</p>
           <p>Pengirim : ${name}</p>
           <p>Email: ${email}</p>
           <p>Type: ${inquiryType}</p>
@@ -274,12 +274,16 @@ export class MailsService {
     </html>
   `;
 
-    return this.sendTestEmail(to, subject, template, {
-      name,
-      email,
-      inquiryType,
-      subject,
-      message,
-    });
+      return this.sendTestEmail(to, subject, template, {
+        name,
+        email,
+        inquiryType,
+        subject,
+        message,
+      });
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 }
