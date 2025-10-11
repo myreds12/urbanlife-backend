@@ -43,7 +43,6 @@ export class KendaraanController {
     return this.kendaraanService.create(createKendaraanDto, files);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get()
   findAll(@Query() query: QueryParamsDto) {
     return this.kendaraanService.findAll(query);
