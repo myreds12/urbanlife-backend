@@ -285,6 +285,7 @@ export class KendaraanService {
         top_attraction,
         status_pajak,
         tanggal_pajak_berakhir,
+        status,
       } = dto;
       // Validasi driver jika diberikan
       if (driver_id) {
@@ -369,6 +370,7 @@ export class KendaraanService {
             createMany: { data: kendaraanFiles },
           },
         }),
+        ...(status !== undefined ? { status: Boolean(status) } : {}),
       };
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars

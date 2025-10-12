@@ -76,4 +76,9 @@ export class CreateKendaraanDto {
     message: 'Kendaraan content must be a non-empty array',
   })
   durasi?: KendaraanDurasiDto[];
+
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  status?: boolean;
 }

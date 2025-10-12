@@ -585,7 +585,7 @@ export class PemesananService {
                   },
                 },
                 travel_package_itinerary: {
-                  select: { id: true, deskripsi: true, bahasa: true, nama: true },
+                  select: { id: true, deskripsi: true, bahasa: true, nama: true, itinerary_files: { select: { id: true, nama_file: true, url: true } } },
                 },
                 travelPackageFile: { select: { id: true, nama_file: true, url: true } },
                 travel_package_prices: {

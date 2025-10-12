@@ -276,6 +276,21 @@ export class TravelPackageService {
               url: true,
             },
           },
+          travel_package_itinerary: {
+            select: { 
+              id: true, 
+              deskripsi: true, 
+              bahasa: true, 
+              nama: true, 
+              itinerary_files: { 
+                select: { 
+                  id: true, 
+                  nama_file: true, 
+                  url: true 
+                } 
+              } 
+            },
+          },
         },
       });
       return {
