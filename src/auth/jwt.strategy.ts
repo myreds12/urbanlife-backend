@@ -1,20 +1,21 @@
-/* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { JwtConfig } from 'src/jwt.config';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly configService: ConfigService) {
-    const secret = configService.get<string>('USER_SECRET');
-    console.log('JWT_SECRET loaded:', secret ? 'Yes' : 'No (undefined!)'); // Harus 'Yes'
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: JwtConfig.user_secret, // pakai env ya
+      secretOrKey: configService.get<string>('USER_SECRET'),
     });
+
+    console.log(
+      'JWT_SECRET loaded:',
+      configService.get<string>('USER_SECRET') ? 'Yes' : 'No (undefined!)',
+    );
   }
 
   async validate(payload: any) {
