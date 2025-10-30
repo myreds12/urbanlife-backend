@@ -1,4 +1,4 @@
-import { IsArray, IsInt, IsNumber, IsOptional, IsString, Validate, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsNumber, IsOptional, IsString, Validate, ValidateNested } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { TravelPackageContentDto } from './travel-package-content.dto';
 import { TravelPackageItineraryDto } from './travel-package-itinerary.dto';
@@ -33,8 +33,9 @@ export class CreateTravelPackageDto {
   durasi: string;
 
   @IsOptional()
-  @IsString()
-  top_attraction?: string;
+  @IsBoolean()
+  @Transform(({ value }) => value === 'true')
+  top_attraction?: boolean;
 
   @Type(() => TravelPackageContentDto)
   @ValidateNested({ each: true })

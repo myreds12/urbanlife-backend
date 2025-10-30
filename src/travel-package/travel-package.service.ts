@@ -105,7 +105,7 @@ export class TravelPackageService {
           nama,
           harga_dewasa,
           harga_anak,
-          top_attraction: top_attraction ? Boolean(top_attraction) : true,
+          top_attraction: top_attraction !== undefined ? Boolean(top_attraction) : true,
           category: {
             connect: { id: category_id },
           },
@@ -516,7 +516,7 @@ export class TravelPackageService {
             nama,
             harga_anak,
             harga_dewasa,
-            top_attraction: top_attraction ? Boolean(top_attraction) : true,
+            ...(top_attraction !== undefined ? { top_attraction: Boolean(top_attraction) } : {}),
             ...(category_id && {
               category: {
                 connect: { id: category_id },
