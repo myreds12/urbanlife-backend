@@ -64,4 +64,9 @@ export class CreateAkomodasiDto {
     message: 'Akomodasi content must be a non-empty array',
   })
   akomodasi_facility: CreateAkomodasiFacilityGroupDto[];
+
+  @Type(() => Number)
+  @IsInt()
+  @IsNotEmpty()
+  type_akomodasi_id: number;
 }

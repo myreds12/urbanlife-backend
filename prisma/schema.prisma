@@ -606,6 +606,7 @@ model Akomodasi {
   nama     String @db.VarChar(250)
   kategori String @db.VarChar(250)
   tipe     String @default("hotel") @db.VarChar(250)
+  type_akomodasi_id Int
 
   top_attraction Boolean @default(true)
   status         Boolean @default(true)
@@ -621,6 +622,7 @@ model Akomodasi {
   akomodasi_file           AkomodasiFile[]
   akomodasi_room_and_price AkomodasiRoomAndPrice[]
   akomodasi_facility_group AkomodasiFacilityGroup[]
+  typeAkomodasi TypeAkomodasi? @relation(fields: [type_akomodasi_id], references: [id])
 }
 
 model AkomodasiRoomAndPrice {
@@ -900,4 +902,14 @@ model TravelPackageItineraryFile {
   updatedAt                  DateTime?                @updatedAt
 
   travelPackageItinerary     TravelPackageItinerary   @relation(fields: [travel_package_itinerary_id], references: [id])
+}
+
+model TypeAkomodasi {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime?
+  Akomodasi Akomodasi[]
 }

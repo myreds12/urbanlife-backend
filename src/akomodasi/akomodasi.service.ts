@@ -181,6 +181,9 @@ export class AkomodasiService {
           akomodasi_file: {
             select: { id: true, nama_file: true, url: true },
           },
+          typeAkomodasi: {
+            select: { id: true, name: true },
+          },
         },
       });
       return {
@@ -226,6 +229,9 @@ export class AkomodasiService {
               },
             },
           },
+          typeAkomodasi: {
+            select: { id: true, name: true },
+          },
         },
       });
       if (!akomodasi) {
@@ -253,6 +259,7 @@ export class AkomodasiService {
         status,
         top_attraction,
         tipe,
+        type_akomodasi_id,
       } = updateAkomodasiDto;
 
       if (lokasi_id) {
@@ -262,6 +269,16 @@ export class AkomodasiService {
         });
         if (!lokasi) {
           throw new NotFoundException(`Lokasi dengan ID ${lokasi_id} tidak ditemukan`);
+        }
+      }
+
+      if (type_akomodasi_id) {
+        const typeAkomodasi = await this.prismaService.typeAkomodasi.findUnique({
+          where: { id: type_akomodasi_id },
+          select: { id: true },
+        });
+        if (!typeAkomodasi) {
+          throw new NotFoundException(`Type Akomodasi dengan ID ${type_akomodasi_id} tidak ditemukan`);
         }
       }
 
@@ -306,6 +323,7 @@ export class AkomodasiService {
             ...(status !== undefined ? { status: Boolean(status) } : {}),
             tipe,
             lokasi: { connect: { id: lokasi_id } },
+            typeAkomodasi: { connect: { id: type_akomodasi_id }}
           },
         });
 

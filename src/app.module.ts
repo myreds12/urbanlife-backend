@@ -34,6 +34,7 @@ import { NotificationModule } from './notification/notification.module';
 import { PrivacyandpolicyModule } from './privacyandpolicy/privacyandpolicy.module';
 import { TermsandconditionModule } from './termsandcondition/termsandcondition.module';
 import { LogoModule } from './logo/logo.module';
+import { TypeAkomodasiModule } from './type-akomodasi/type-akomodasi.module';
 
 @Module({
   imports: [
@@ -90,6 +91,7 @@ import { LogoModule } from './logo/logo.module';
     PrivacyandpolicyModule,
     TermsandconditionModule,
     LogoModule,
+    TypeAkomodasiModule,
   ],
   controllers: [AppController],
   providers: [AppService],
