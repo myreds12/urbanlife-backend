@@ -57,6 +57,14 @@ export class CreateTravelPackageDto {
 
   @IsOptional()
   @IsArray()
-  @Transform(({ value }) => (value ? value.map((item: string) => parseInt(item, 10)) : []), { toClassOnly: true })
+  @Transform(({ value }) => {
+    if (Array.isArray(value)) {
+      return value.map((item: string) => parseInt(item, 10));
+    }
+    if (value !== undefined && value !== null && value !== '') {
+      return [parseInt(value, 10)];
+    }
+    return [];
+  }, { toClassOnly: true })
   travel_package_deleted_itinerary_file?: number[];
 }
