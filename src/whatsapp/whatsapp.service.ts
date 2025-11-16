@@ -20,7 +20,6 @@ export class WhatsappService {
   async connect(sessionId: string, user: { id: number }) {
     const existingClient = this.clients.get(sessionId);
 
-    // ✅ Validasi ulang status sebenarnya (bukan hanya `has`)
     if (existingClient) {
       try {
         const isConnected = await existingClient.isConnected();
@@ -32,26 +31,25 @@ export class WhatsappService {
           };
         }
       } catch (e) {
-        this.logger.warn(`⚠️ Sesi ${sessionId} ditemukan tapi tidak valid: ${e.message}`);
-        this.clients.delete(sessionId); // Clean up if invalid
+        this.logger.warn(`Sesi ${sessionId} tidak valid. Dibersihkan.`);
+        this.clients.delete(sessionId);
         this.sessionStatus.set(sessionId, false);
       }
     }
 
-    // ✅ Lanjut ke setup baru
     const role = await this.prismaService.roles.findFirst({
       where: { name: 'Admin WhatsApp' },
       select: { id: true },
     });
 
-    if (!role) throw new Error('Role "Admin WhatsApp" tidak ditemukan');
+    if (!role) throw new Error('Role Admin WhatsApp tidak ditemukan');
 
     const userAdmin = await this.prismaService.user.findUnique({
       where: { id: user.id },
       select: { id: true, nama: true, nomor_hp: true },
     });
 
-    if (!userAdmin) throw new Error(`User dengan ID ${user.id} tidak ditemukan`);
+    if (!userAdmin) throw new Error(`User ID ${user.id} tidak ditemukan`);
 
     return new Promise((resolve, reject) => {
       let qrResolved = false;
@@ -59,11 +57,11 @@ export class WhatsappService {
 
       create({
         session: sessionId,
-        catchQR: base64Qrimg => {
+        catchQR: qr => {
           if (!qrResolved) {
             qrResolved = true;
             this.sessionStatus.set(sessionId, false);
-            resolve({ session: sessionId, qr: base64Qrimg, status: false });
+            resolve({ session: sessionId, qr, status: false });
           }
         },
         statusFind: status => {
@@ -77,7 +75,7 @@ export class WhatsappService {
         },
         headless: true,
         tokenStore: 'file',
-        folderNameToken: './tokens',
+        folderNameToken: 'tokens',
         autoClose: 0,
         browserArgs: [
           '--no-sandbox',
@@ -94,30 +92,24 @@ export class WhatsappService {
       })
         .then(async client => {
           this.clients.set(sessionId, client);
-          this.logger.log(`✅ Sesi ${sessionId} berhasil dimulai`);
+          this.logger.log(`Sesi ${sessionId} berhasil dimulai`);
 
-          // Ambil nomor WhatsApp yang sedang login
           let waNumber: string;
+
           try {
             const me = await client.getWid();
             waNumber = typeof me === 'string' ? me.split('@')[0] : 'UNKNOWN';
-          } catch (err) {
-            this.logger.warn('⚠️ Gagal mengambil nomor WhatsApp:', err.message);
+          } catch {
             waNumber = 'UNKNOWN';
           }
 
-          // Update user jika belum punya nomor_hp
           if ((!userAdmin.nomor_hp || userAdmin.nomor_hp === '') && waNumber !== 'UNKNOWN') {
             await this.prismaService.user.update({
               where: { id: user.id },
-              data: {
-                nomor_hp: waNumber,
-              },
+              data: { nomor_hp: waNumber },
             });
-            this.logger.log(`📱 Nomor HP user ${user.id} diperbarui: ${waNumber}`);
           }
 
-          // Create atau update adminWa
           const existing = await this.prismaService.adminWa.findFirst({
             where: { user_id: user.id },
           });
@@ -145,7 +137,7 @@ export class WhatsappService {
           }
         })
         .catch(err => {
-          this.logger.error(`❌ Gagal memulai sesi ${sessionId}: ${err.message}`);
+          this.logger.error(`Gagal memulai sesi ${sessionId}: ${err.message}`);
           reject(err);
         });
     });
