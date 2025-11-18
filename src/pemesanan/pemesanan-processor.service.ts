@@ -120,13 +120,17 @@ export class OrderProcessor {
         select: { text_to_customer: true, text_to_admin: true },
       });
 
+      const tanggal =  new Date(pemesanan.createdAt)
+    .toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+
       // ✅ Template pesan untuk customer
       const customerText =
         message?.text_to_customer ||
         `Hi ${pemesanan.user.nama},\n\n` +
           `Terima kasih telah mempercayakan perjalanan anda bersama urbanlife.id.\n\n` +
           `Selesaikan pembayaran Order ID *${pemesanan.id}* untuk pemesanan berikut:\n\n` +
-          `${itemTexts.join('\n')}\n\n` +
+          `${itemTexts.join('\n')}\n` +
+          `Tanggal: ${tanggal}\n\n` +
           `Total pembayaran:\nIDR ${Number(pemesanan.total_harga).toLocaleString('id-ID')}`;
 
       // ✅ Kirim pesan ke customer
@@ -293,8 +297,8 @@ export class OrderProcessor {
             items.push(
               `🌍 Paket Wisata: ${paket.nama}\n` +
                 `   Durasi: ${paket.durasi ?? '-'} ${paket.tipe_durasi}\n` +
-                `   Harga Dewasa: Rp ${Number(paket.harga_dewasa).toLocaleString('id-ID')}\n` +
-                `   Harga Anak: Rp ${Number(paket.harga_anak).toLocaleString('id-ID')}\n` +
+                // `   Harga Dewasa: Rp ${Number(paket.harga_dewasa).toLocaleString('id-ID')}\n` +
+                // `   Harga Anak: Rp ${Number(paket.harga_anak).toLocaleString('id-ID')}\n` +
                 (paket.guide
                   ? `   Guide: ${paket.guide.nama} (HP: ${paket.guide.nomor_hp ?? '-'})\n`
                   : ''),
