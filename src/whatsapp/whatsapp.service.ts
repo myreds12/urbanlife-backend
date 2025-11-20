@@ -1,6 +1,6 @@
 // whatsapp.service.ts
 import { Injectable, Logger } from '@nestjs/common';
-import { create, Whatsapp } from '@wppconnect-team/wppconnect';
+import { create, Whatsapp, CreateOptions } from '@wppconnect-team/wppconnect';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -53,6 +53,21 @@ export class WhatsappService {
 
     if (!userAdmin) throw new Error(`User dengan ID ${user.id} tidak ditemukan`);
 
+    const uniqueSessionFolder = path.join(__dirname, 'tokens');
+
+    try {
+      await fs.rm(uniqueSessionFolder, { recursive: true, force: true });
+      this.logger.log(`Folder lama ${sessionId} dihapus`);
+    } catch (err) {
+      this.logger.warn(`⚠️ Gagal menghapus folder lama ${sessionId}: ${err.message}`);
+    }
+
+    try {
+      await fs.access(uniqueSessionFolder);
+    } catch {
+      await fs.mkdir(uniqueSessionFolder, { recursive: true });
+    }
+
     return new Promise((resolve, reject) => {
       let qrResolved = false;
       const browserPath = puppeteer.executablePath();
@@ -77,7 +92,7 @@ export class WhatsappService {
         },
         headless: true,
         tokenStore: 'file',
-        folderNameToken: './tokens',
+        folderNameToken: uniqueSessionFolder,
         autoClose: 0,
         browserArgs: [
           '--no-sandbox',
