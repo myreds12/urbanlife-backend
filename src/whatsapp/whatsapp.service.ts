@@ -55,7 +55,15 @@ export class WhatsappService {
 
     const uniqueSessionFolder = path.join(__dirname, 'tokens');
 
-    try {
+    try { 
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      });
+
+      await browser.close();
+      console.log('Chromium browser berhasil ditutup.');
+
       await fs.rm(uniqueSessionFolder, { recursive: true, force: true });
       this.logger.log(`Folder lama ${sessionId} dihapus`);
     } catch (err) {
