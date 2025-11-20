@@ -1,6 +1,6 @@
 // whatsapp.service.ts
 import { Injectable, Logger } from '@nestjs/common';
-import { create, Whatsapp, CreateOptions } from '@wppconnect-team/wppconnect';
+import { create, Whatsapp } from '@wppconnect-team/wppconnect';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -11,7 +11,7 @@ import { UpdateTemplateWhatsappDto } from './dto/update-template-whatsapp.dto';
 
 @Injectable()
 export class WhatsappService {
-  constructor(private readonly prismaService: PrismaService) { }
+  constructor(private readonly prismaService: PrismaService) {}
 
   private clients = new Map<string, Whatsapp>();
   private readonly logger = new Logger(WhatsappService.name);
@@ -33,13 +33,12 @@ export class WhatsappService {
         }
       } catch (e) {
         this.logger.warn(`⚠️ Sesi ${sessionId} ditemukan tapi tidak valid: ${e.message}`);
-        this.clients.delete(sessionId);
+        this.clients.delete(sessionId); // Clean up if invalid
         this.sessionStatus.set(sessionId, false);
       }
     }
 
-    // Jika sesi tidak valid atau belum ada
-    // Lakukan setup baru, dan pastikan untuk tidak memulai ulang browser jika sudah ada sesi yang sedang berjalan
+    // ✅ Lanjut ke setup baru
     const role = await this.prismaService.roles.findFirst({
       where: { name: 'Admin WhatsApp' },
       select: { id: true },
@@ -53,22 +52,6 @@ export class WhatsappService {
     });
 
     if (!userAdmin) throw new Error(`User dengan ID ${user.id} tidak ditemukan`);
-
-    const uniqueSessionFolder = path.join(__dirname, 'tokens');
-
-
-    try {
-      await fs.rm(uniqueSessionFolder, { recursive: true, force: true });
-      this.logger.log(`Folder lama ${sessionId} dihapus`);
-    } catch (err) {
-      this.logger.warn(`⚠️ Gagal menghapus folder lama ${sessionId}: ${err.message}`);
-    }
-
-    try {
-      await fs.access(uniqueSessionFolder);
-    } catch {
-      await fs.mkdir(uniqueSessionFolder, { recursive: true });
-    }
 
     return new Promise((resolve, reject) => {
       let qrResolved = false;
@@ -94,7 +77,7 @@ export class WhatsappService {
         },
         headless: true,
         tokenStore: 'file',
-        folderNameToken: uniqueSessionFolder,
+        folderNameToken: './tokens',
         autoClose: 0,
         browserArgs: [
           '--no-sandbox',
