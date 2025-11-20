@@ -11,7 +11,7 @@ import { UpdateTemplateWhatsappDto } from './dto/update-template-whatsapp.dto';
 
 @Injectable()
 export class WhatsappService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly prismaService: PrismaService) { }
 
   private clients = new Map<string, Whatsapp>();
   private readonly logger = new Logger(WhatsappService.name);
@@ -33,12 +33,13 @@ export class WhatsappService {
         }
       } catch (e) {
         this.logger.warn(`⚠️ Sesi ${sessionId} ditemukan tapi tidak valid: ${e.message}`);
-        this.clients.delete(sessionId); // Clean up if invalid
+        this.clients.delete(sessionId);
         this.sessionStatus.set(sessionId, false);
       }
     }
 
-    // ✅ Lanjut ke setup baru
+    // Jika sesi tidak valid atau belum ada
+    // Lakukan setup baru, dan pastikan untuk tidak memulai ulang browser jika sudah ada sesi yang sedang berjalan
     const role = await this.prismaService.roles.findFirst({
       where: { name: 'Admin WhatsApp' },
       select: { id: true },
@@ -55,15 +56,8 @@ export class WhatsappService {
 
     const uniqueSessionFolder = path.join(__dirname, 'tokens');
 
-    try { 
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-      });
 
-      await browser.close();
-      console.log('Chromium browser berhasil ditutup.');
-
+    try {
       await fs.rm(uniqueSessionFolder, { recursive: true, force: true });
       this.logger.log(`Folder lama ${sessionId} dihapus`);
     } catch (err) {
