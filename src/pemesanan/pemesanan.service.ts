@@ -115,12 +115,27 @@ export class PemesananService {
       },
     );
 
+    const tanggalMulai = pemesanan.pemesanan_item
+      .map(item => item.tanggal_mulai)
+      .filter(Boolean)
+      .sort((a, b) => a!.getTime() - b!.getTime())[0];
+
+    const tanggalSelesai = pemesanan.pemesanan_item
+      .map(item => item.tanggal_selesai)
+      .filter(Boolean)
+      .sort((a, b) => b!.getTime() - a!.getTime())[0];
+
+    const tanggalRange = tanggalMulai && tanggalSelesai
+      ? `${tanggalMulai.toISOString().split('T')[0]} – ${tanggalSelesai.toISOString().split('T')[0]}`
+      : undefined;
+
     await this.notificationService.createNotification(pemesanan.id, pemesanan.status, {
       type: 'ORDER_CREATED',
       message: `Order #${pemesanan.id} successfully created.`,
       data: pemesanan,
       user_id: createdUser.id,
-      order_created_at: pemesanan.createdAt,
+      // order_created_at: pemesanan.createdAt,
+      order_created_at: tanggalRange
     });
 
     this.logger.log(`Pemesanan ${pemesanan.id} ditambahkan ke queue`);
@@ -281,16 +296,16 @@ export class PemesananService {
 
       const orderItem: Prisma.PemesananItemCreateManyPemesananInput[] = order_item
         ? order_item.map(item => ({
-            item_id: item.item_id,
-            is_priority: item.is_priority,
-            item_type: item.item_type,
-            ...(item.durasi_id && { durasi_id: item.durasi_id }),
-            ...(item.room_id && { room_id: item.room_id }),
-            durasi_hari: item.durasi_hari,
-            total_harga: item.harga,
-            tanggal_mulai: item.tanggal_mulai ? new Date(item.tanggal_mulai) : undefined,
-            tanggal_selesai: item.tanggal_selesai ? new Date(item.tanggal_selesai) : undefined,
-          }))
+          item_id: item.item_id,
+          is_priority: item.is_priority,
+          item_type: item.item_type,
+          ...(item.durasi_id && { durasi_id: item.durasi_id }),
+          ...(item.room_id && { room_id: item.room_id }),
+          durasi_hari: item.durasi_hari,
+          total_harga: item.harga,
+          tanggal_mulai: item.tanggal_mulai ? new Date(item.tanggal_mulai) : undefined,
+          tanggal_selesai: item.tanggal_selesai ? new Date(item.tanggal_selesai) : undefined,
+        }))
         : [];
       const pemesanan = await this.prismaService.pemesanan.update({
         where: { id },
@@ -301,12 +316,12 @@ export class PemesananService {
           updatedAt: new Date(),
           ...(order_item
             ? {
-                pemesanan_item: {
-                  createMany: {
-                    data: orderItem,
-                  },
+              pemesanan_item: {
+                createMany: {
+                  data: orderItem,
                 },
-              }
+              },
+            }
             : undefined),
           user: {
             connect: { id: user_id },
@@ -451,8 +466,8 @@ export class PemesananService {
       const serviceTypes: ('KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE')[] =
         Array.isArray(services) && services.length > 0
           ? (services.filter(s =>
-              ['KENDARAAN', 'AKOMODASI', 'TRAVEL_PACKAGE'].includes(s as any),
-            ) as any)
+            ['KENDARAAN', 'AKOMODASI', 'TRAVEL_PACKAGE'].includes(s as any),
+          ) as any)
           : type
             ? [type as any]
             : ['KENDARAAN', 'AKOMODASI', 'TRAVEL_PACKAGE'];
@@ -589,7 +604,7 @@ export class PemesananService {
                 },
                 travelPackageFile: { select: { id: true, nama_file: true, url: true } },
                 travel_package_prices: {
-                  select: { id: true, description: true, harga: true},
+                  select: { id: true, description: true, harga: true },
                 },
               },
             });

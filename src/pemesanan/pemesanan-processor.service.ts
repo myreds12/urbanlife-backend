@@ -126,12 +126,15 @@ export class OrderProcessor {
       // ✅ Template pesan untuk customer
       const customerText =
         message?.text_to_customer ||
-        `Hi ${pemesanan.user.nama},\n\n` +
-          `Terima kasih telah mempercayakan perjalanan anda bersama urbanlife.id.\n\n` +
-          `Selesaikan pembayaran Order ID *${pemesanan.id}* untuk pemesanan berikut:\n\n` +
+          `Order Confirmation\n` +
+          `Hi ${pemesanan.user.nama},\n` +
+          `Thank you for placing your order. Here are your order details:\n\n` +
+          `Order ID: #*${pemesanan.id}*\n\n` +
+          `Items:\n` +
           `${itemTexts.join('\n')}\n` +
           `Tanggal: ${tanggal}\n\n` +
-          `Total pembayaran:\nIDR ${Number(pemesanan.total_harga).toLocaleString('id-ID')}`;
+          `Total :\n Rp.${Number(pemesanan.total_harga).toLocaleString('id-ID')}` +
+          `We will process your order immediately. Thank you for trusting our service 🙏\n`;
 
       // ✅ Kirim pesan ke customer
       await this.whatsappService.sendMessage(
