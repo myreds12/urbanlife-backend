@@ -79,13 +79,27 @@ export class OrderProcessor {
     // Generate item texts untuk email
     const itemTexts = await this.generateItemTexts(pemesanan.pemesanan_item);
 
+    const tanggalMulai = pemesanan.pemesanan_item
+      .map(item => item.tanggal_mulai)
+      .filter(Boolean)
+      .sort((a, b) => a!.getTime() - b!.getTime())[0];
+
+    const tanggalSelesai = pemesanan.pemesanan_item
+      .map(item => item.tanggal_selesai)
+      .filter(Boolean)
+      .sort((a, b) => b!.getTime() - a!.getTime())[0];
+
+    const tanggalRange = tanggalMulai && tanggalSelesai
+      ? `${tanggalMulai.toISOString().split('T')[0]} – ${tanggalSelesai.toISOString().split('T')[0]}`
+      : undefined;
+
     // Kirim email
     await this.mailService.sendOrderConfirmation(customerEmail, {
       orderId: pemesanan.id,
       customerName: customerName || pemesanan.user.nama,
       items: itemTexts,
       total: +pemesanan.total_harga,
-      orderDate: pemesanan.createdAt,
+      orderDate: tanggalRange,
     });
   }
 
@@ -120,8 +134,22 @@ export class OrderProcessor {
         select: { text_to_customer: true, text_to_admin: true },
       });
 
-      const tanggal =  new Date(pemesanan.createdAt)
-    .toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+      const tanggalMulai = pemesanan.pemesanan_item
+      .map(item => item.tanggal_mulai)
+      .filter(Boolean)
+      .sort((a, b) => a!.getTime() - b!.getTime())[0];
+
+    const tanggalSelesai = pemesanan.pemesanan_item
+      .map(item => item.tanggal_selesai)
+      .filter(Boolean)
+      .sort((a, b) => b!.getTime() - a!.getTime())[0];
+
+    const tanggalRange = tanggalMulai && tanggalSelesai
+      ? `${tanggalMulai.toISOString().split('T')[0]} – ${tanggalSelesai.toISOString().split('T')[0]}`
+      : undefined;
+
+    //   const tanggal =  new Date(pemesanan.createdAt)
+    // .toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
 
       // ✅ Template pesan untuk customer
       const customerText =
@@ -132,7 +160,7 @@ export class OrderProcessor {
           `Order ID: #*${pemesanan.id}*\n\n` +
           `Items:\n` +
           `${itemTexts.join('\n')}\n` +
-          `Tanggal: ${tanggal}\n\n` +
+          `Tanggal: ${tanggalRange}\n\n` +
           `Total :\n Rp.${Number(pemesanan.total_harga).toLocaleString('id-ID')}` +
           `We will process your order immediately. Thank you for trusting our service 🙏\n`;
 

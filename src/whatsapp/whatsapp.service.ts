@@ -11,13 +11,28 @@ import { UpdateTemplateWhatsappDto } from './dto/update-template-whatsapp.dto';
 
 @Injectable()
 export class WhatsappService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly prismaService: PrismaService) { }
 
   private clients = new Map<string, Whatsapp>();
   private readonly logger = new Logger(WhatsappService.name);
   private readonly sessionStatus = new Map<string, boolean>();
 
   async connect(sessionId: string, user: { id: number }) {
+    const tokenFolder = path.join(__dirname, 'tokens', sessionId);
+
+    console.log(`Mengecek keberadaan folder untuk sesi ${sessionId}:`, tokenFolder);
+
+    if (tokenFolder) {
+      this.clients.delete(sessionId);
+      try {
+        await fs.rm(tokenFolder, { recursive: true, force: true });
+        this.logger.log(`🧹 Folder sesi ${sessionId} berhasil dihapus`);
+      } catch (err) {
+        this.logger.log(`⚠️ Gagal hapus folder sesi ${sessionId}: ${err.message}`);
+      }
+
+    }
+
     const existingClient = this.clients.get(sessionId);
 
     // ✅ Validasi ulang status sebenarnya (bukan hanya `has`)
@@ -77,7 +92,7 @@ export class WhatsappService {
         },
         headless: true,
         tokenStore: 'file',
-        folderNameToken: './tokens',
+        folderNameToken: tokenFolder,
         autoClose: 0,
         browserArgs: [
           '--no-sandbox',

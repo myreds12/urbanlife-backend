@@ -122,15 +122,15 @@ export class MailsService {
       customerName: string;
       items: string[];
       total: number;
-      orderDate: Date;
+      orderDate: string;
     },
   ) {
     const subject = `Order Confirmation #${context.orderId}`;
-    const formattedDate = new Date(context.orderDate).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    // const formattedDate = new Date(context.orderDate).toLocaleDateString('id-ID', {
+    //   year: 'numeric',
+    //   month: 'long',
+    //   day: 'numeric',
+    // });
 
     // gabung items jadi list HTML
     const itemsHtml = context.items.map(item => `<li>${item}</li>`).join('');
@@ -155,15 +155,15 @@ export class MailsService {
         </div>
         <div class="content">
           <h2>Hi ${context.customerName},</h2>
-          <p>Terima kasih sudah melakukan pemesanan. Berikut detail pesanan Anda:</p>
+          <p>Thank you for placing your order. Here are your order details:</p>
           <p><strong>Order ID:</strong> #${context.orderId}</p>
-          <p><strong>Tanggal:</strong> ${formattedDate}</p>
+          <p><strong>Date:</strong> ${context.orderDate}</p>
           <p><strong>Items:</strong></p>
           <ul>
             ${itemsHtml}
           </ul>
           <p><strong>Total:</strong> Rp ${context.total.toLocaleString('id-ID')}</p>
-          <p>Kami akan segera memproses pesanan Anda. Terima kasih telah mempercayai layanan kami 🙏</p>
+          <p>We will process your order immediately. Thank you for trusting our service. 🙏</p>
         </div>
         <div class="footer">
           <p>&copy; 2024 Your Company. All rights reserved.</p>
