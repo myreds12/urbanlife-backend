@@ -35,6 +35,8 @@ import { PrivacyandpolicyModule } from './privacyandpolicy/privacyandpolicy.modu
 import { TermsandconditionModule } from './termsandcondition/termsandcondition.module';
 import { LogoModule } from './logo/logo.module';
 import { TypeAkomodasiModule } from './type-akomodasi/type-akomodasi.module';
+import { AirportShuttleModule } from './airport-shuttle/airport-shuttle.module';
+import { PortShuttleModule } from './port-shuttle/port-shuttle.module';
 
 @Module({
   imports: [
@@ -92,6 +94,8 @@ import { TypeAkomodasiModule } from './type-akomodasi/type-akomodasi.module';
     TermsandconditionModule,
     LogoModule,
     TypeAkomodasiModule,
+    AirportShuttleModule,
+    PortShuttleModule,
   ],
   controllers: [AppController],
   providers: [AppService],

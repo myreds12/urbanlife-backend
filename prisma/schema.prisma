@@ -185,6 +185,8 @@ model Lokasi {
   akomodasi      Akomodasi[]
   kendaraan      Kendaraan[]
   Blog           Blog[]
+  airport_shuttles AirportShuttle[]
+  port_shuttles PortShuttle[]
 }
 
 //TODO: DONE WITH ERROR IN UPDATE AND GET DETAILS DELETE
@@ -912,4 +914,96 @@ model TypeAkomodasi {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime?
   Akomodasi Akomodasi[]
+}
+
+model AirportShuttle {
+  id          Int  @id @default(autoincrement())
+  lokasi_id   Int
+
+  nama        String @db.VarChar(250)
+  harga                  Decimal   @default(0)
+
+  top_attraction Boolean @default(true)
+  is_popular     Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  lokasi   Lokasi    @relation(fields: [lokasi_id], references: [id])
+
+  airport_shuttle_content   AirportShuttleContent[]
+  airport_shuttle_file        AirportShuttleFile[]
+}
+
+model AirportShuttleContent {
+  id                Int @id @default(autoincrement())
+  airport_shuttle_id Int
+
+  bahasa    String  @default("INDONESIA") @db.VarChar(250)
+  deskripsi String? @db.LongText
+  kebijakan String? @db.LongText
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  airport_shuttle AirportShuttle @relation(fields: [airport_shuttle_id], references: [id])
+}
+
+model AirportShuttleFile {
+  id                Int @id @default(autoincrement())
+  airport_shuttle_id Int
+
+  nama_file String @db.VarChar(250)
+  url       String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  airport_shuttle AirportShuttle @relation(fields: [airport_shuttle_id], references: [id])
+}
+
+model PortShuttle {
+  id          Int  @id @default(autoincrement())
+  lokasi_id   Int
+
+  nama        String @db.VarChar(250)
+  harga                  Decimal   @default(0)
+
+  top_attraction Boolean @default(true)
+  is_popular     Boolean @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  lokasi   Lokasi    @relation(fields: [lokasi_id], references: [id])
+
+  port_shuttle_content   PortShuttleContent[]
+  port_shuttle_file        PortShuttleFile[]
+}
+
+model PortShuttleContent {
+  id                Int @id @default(autoincrement())
+  port_shuttle_id Int
+
+  bahasa    String  @default("INDONESIA") @db.VarChar(250)
+  deskripsi String? @db.LongText
+  kebijakan String? @db.LongText
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  port_shuttle PortShuttle @relation(fields: [port_shuttle_id], references: [id])
+}
+
+model PortShuttleFile {
+  id                Int @id @default(autoincrement())
+  port_shuttle_id Int
+
+  nama_file String @db.VarChar(250)
+  url       String @db.VarChar(250)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  port_shuttle PortShuttle @relation(fields: [port_shuttle_id], references: [id])
 }
