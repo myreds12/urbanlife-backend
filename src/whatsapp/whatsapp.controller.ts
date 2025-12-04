@@ -72,7 +72,7 @@ export class WhatsappController {
   @UseGuards(JwtAuthGuard)
   @Post('connect')
   async connect(@Req() req: UserRequest) {
-    const sessionId = `user_${req.user.id}`;
+    const sessionId = `user_${req.user.id}_${Date.now()}`;
     console.log(req.user, 'user data from request');
     const user = {
       id: req.user.id,

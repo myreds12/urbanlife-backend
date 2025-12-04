@@ -18,20 +18,7 @@ export class WhatsappService {
   private readonly sessionStatus = new Map<string, boolean>();
 
   async connect(sessionId: string, user: { id: number }) {
-    const tokenFolder = path.join(__dirname, 'tokens', sessionId);
-
-    console.log(`Mengecek keberadaan folder untuk sesi ${sessionId}:`, tokenFolder);
-
-    if (tokenFolder) {
-      this.clients.delete(sessionId);
-      try {
-        await fs.rm(tokenFolder, { recursive: true, force: true });
-        this.logger.log(`🧹 Folder sesi ${sessionId} berhasil dihapus`);
-      } catch (err) {
-        this.logger.log(`⚠️ Gagal hapus folder sesi ${sessionId}: ${err.message}`);
-      }
-
-    }
+    const tokenFolder = path.join(__dirname, 'tokens');
 
     const existingClient = this.clients.get(sessionId);
 
