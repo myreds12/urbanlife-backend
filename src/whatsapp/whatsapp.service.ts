@@ -20,12 +20,17 @@ export class WhatsappService {
   async connect(sessionId: string, user: { id: number }) {
     const tokenFolder = path.join(__dirname, 'tokens');
 
-    const existingClient = this.clients.get(sessionId);
+    // const existingClient = this.clients.get(sessionId);
+    const existingClient = await this.prismaService.adminWa.findFirst({
+      where: { user_id: user.id },
+      select: { id: true, user_id: true , is_active: true },
+    });
 
     // ✅ Validasi ulang status sebenarnya (bukan hanya `has`)
     if (existingClient) {
       try {
-        const isConnected = await existingClient.isConnected();
+        // const isConnected = await existingClient.isConnected();
+        const isConnected = existingClient.is_active;
         if (isConnected) {
           return {
             session: sessionId,
@@ -153,11 +158,20 @@ export class WhatsappService {
     });
   }
 
-  async logout(sessionId: string): Promise<{ message: string }> {
+  async logout(sessionId: string, user: { id: number }): Promise<{ message: string }> {
     const client = this.clients.get(sessionId);
+    const existing = await this.prismaService.adminWa.findFirst({
+      where: { user_id: user.id },
+    });
 
     if (client) {
       try {
+        await this.prismaService.adminWa.update({
+          where: { id: existing.id },
+          data: {
+            is_active: false,
+          },
+        });
         await client.logout();
         await client.close();
       } catch (err) {

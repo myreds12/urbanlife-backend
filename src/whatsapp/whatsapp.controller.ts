@@ -100,6 +100,9 @@ export class WhatsappController {
   @Post('logout')
   logout(@Req() req: UserRequest) {
     const sessionId = `user_${req.user.id}`;
-    return this.whatsappService.logout(sessionId);
+    const user = {
+      id: req.user.id,
+    };
+    return this.whatsappService.logout(sessionId, user);
   }
 }
