@@ -23,6 +23,19 @@ export class AirportShuttleContentDto {
   kebijakan?: string;
 }
 
+export class AirportShuttlePriceDto {
+  @IsOptional()
+  @Type(() => Number)
+  id?: number;
+  
+  @IsString()
+  nama: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  harga: number;
+}
+
 export class CreateAirportShuttleDto {
   @IsOptional()
   @Type(() => Number)
@@ -32,10 +45,6 @@ export class CreateAirportShuttleDto {
   @IsString()
   @IsNotEmpty()
   nama: string;
-
-  @Type(() => Number)
-  @IsNumber()
-  harga: number;
 
   @IsOptional()
   @IsBoolean()
@@ -53,4 +62,16 @@ export class CreateAirportShuttleDto {
   @IsOptional()
   @IsArray()
   airport_shuttle_file?: any[];
+
+  @Type(() => AirportShuttlePriceDto)
+  @ValidateNested({ each: true })
+  airport_shuttle_price: AirportShuttlePriceDto[];
+}
+
+export class UpdatePopularStatusDto {
+  @Type(() => Number)
+  id?: number;
+
+  @IsBoolean()
+  is_popular: boolean;
 }

@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 
 import { AirportShuttleService } from './airport-shuttle.service';
-import { CreateAirportShuttleDto } from './dto/create-airport-shuttle.dto';
+import { CreateAirportShuttleDto, UpdatePopularStatusDto } from './dto/create-airport-shuttle.dto';
 
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -59,5 +59,18 @@ export class AirportShuttleController {
   @Delete()
   remove(@Body('ids') ids: number[]) {
     return this.airportShuttleService.remove(ids);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('update-popular-status/:id')
+  async updatePopularStatus(
+    @Param('id') id: string,
+    @Body() updatePopularStatusDto: UpdatePopularStatusDto,
+  ) {
+      const updatedStatus = {
+      ...updatePopularStatusDto,
+      id: Number(id),
+    };
+    return this.airportShuttleService.updatePopularStatus(updatedStatus);
   }
 }

@@ -415,6 +415,8 @@ model PemesananItem {
   item_id      Int
   durasi_id    Int?
   room_id      Int?
+  airport_shuttle_id    Int?
+  port_shuttle_id    Int?
 
   jumlah_dewasa Int?
   jumlah_anak   Int?
@@ -436,6 +438,8 @@ model PemesananItem {
   Pemesanan Pemesanan              @relation(fields: [pemesanan_id], references: [id])
   durasi    KendaraanDurasi?       @relation(fields: [durasi_id], references: [id])
   room      AkomodasiRoomAndPrice? @relation(fields: [room_id], references: [id])
+  airport_shuttle      AirportShuttlePrice? @relation(fields: [airport_shuttle_id], references: [id])
+  port_shuttle      PortShuttlePrice? @relation(fields: [port_shuttle_id], references: [id])
 
   @@index([item_type, item_id])
 }
@@ -921,7 +925,6 @@ model AirportShuttle {
   lokasi_id   Int
 
   nama        String @db.VarChar(250)
-  harga                  Decimal   @default(0)
 
   top_attraction Boolean @default(true)
   is_popular     Boolean @default(false)
@@ -933,6 +936,7 @@ model AirportShuttle {
 
   airport_shuttle_content   AirportShuttleContent[]
   airport_shuttle_file        AirportShuttleFile[]
+  airport_shuttle_price        AirportShuttlePrice[]
 }
 
 model AirportShuttleContent {
@@ -962,12 +966,25 @@ model AirportShuttleFile {
   airport_shuttle AirportShuttle @relation(fields: [airport_shuttle_id], references: [id])
 }
 
+model AirportShuttlePrice {
+  id                Int @id @default(autoincrement())
+  airport_shuttle_id Int
+
+  nama String @db.VarChar(250)
+  harga  Decimal   @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  airport_shuttle AirportShuttle @relation(fields: [airport_shuttle_id], references: [id])
+  PemesananItem PemesananItem[]
+}
+
 model PortShuttle {
   id          Int  @id @default(autoincrement())
   lokasi_id   Int
 
   nama        String @db.VarChar(250)
-  harga                  Decimal   @default(0)
 
   top_attraction Boolean @default(true)
   is_popular     Boolean @default(false)
@@ -979,6 +996,7 @@ model PortShuttle {
 
   port_shuttle_content   PortShuttleContent[]
   port_shuttle_file        PortShuttleFile[]
+  port_shuttle_price        PortShuttlePrice[]
 }
 
 model PortShuttleContent {
@@ -1006,4 +1024,18 @@ model PortShuttleFile {
   updatedAt DateTime?
 
   port_shuttle PortShuttle @relation(fields: [port_shuttle_id], references: [id])
+}
+
+model PortShuttlePrice {
+  id                Int @id @default(autoincrement())
+  port_shuttle_id Int
+
+  nama String @db.VarChar(250)
+  harga  Decimal   @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  port_shuttle PortShuttle @relation(fields: [port_shuttle_id], references: [id])
+  PemesananItem PemesananItem[]
 }

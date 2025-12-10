@@ -82,6 +82,7 @@ export class BlogService {
         take,
         select: {
           id: true,
+          slug: true,
           createdAt: true,
           lokasi: {
             select: {

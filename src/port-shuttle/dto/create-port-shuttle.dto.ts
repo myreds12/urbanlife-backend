@@ -23,6 +23,19 @@ export class PortShuttleContentDto {
   kebijakan?: string;
 }
 
+export class PortShuttlePriceDto {
+  @IsOptional()
+  @Type(() => Number)
+  id?: number;
+  
+  @IsString()
+  nama: string;
+
+  @Type(() => Number)
+  @IsNumber()
+  harga: number;
+}
+
 export class CreatePortShuttleDto {
   @IsOptional()
   @Type(() => Number)
@@ -32,10 +45,6 @@ export class CreatePortShuttleDto {
   @IsString()
   @IsNotEmpty()
   nama: string;
-
-  @Type(() => Number)
-  @IsNumber()
-  harga: number;
 
   @IsOptional()
   @IsBoolean()
@@ -55,4 +64,16 @@ export class CreatePortShuttleDto {
   @IsOptional()
   @IsArray()
   port_shuttle_file?: any[];
+
+  @Type(() => PortShuttlePriceDto)
+  @ValidateNested({ each: true })
+  port_shuttle_price: PortShuttlePriceDto[];
+}
+
+export class UpdatePopularStatusDto {
+  @Type(() => Number)
+  id?: number;
+
+  @IsBoolean()
+  is_popular: boolean;
 }

@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateAirportShuttleDto } from './dto/create-airport-shuttle.dto';
+import { CreateAirportShuttleDto, UpdatePopularStatusDto } from './dto/create-airport-shuttle.dto';
 import { UpdateAirportShuttleDto } from './dto/update-airport-shuttle.dto';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 import * as fs from 'fs';
@@ -19,7 +19,6 @@ export class AirportShuttleService {
         data: {
           lokasi_id: dto.lokasi_id,
           nama: dto.nama,
-          harga: dto.harga,
           top_attraction: dto.top_attraction,
           is_popular: dto.is_popular,
           airport_shuttle_content: dto.airport_shuttle_content
@@ -33,11 +32,15 @@ export class AirportShuttleService {
               })),
             }
             : undefined,
+          airport_shuttle_price: dto.airport_shuttle_price
+            ? { create: dto.airport_shuttle_price }
+            : undefined,
         },
         include: {
           airport_shuttle_content: true,
           airport_shuttle_file: true,
           lokasi: true,
+          airport_shuttle_price: true,
         },
       });
     } catch (error) {
@@ -99,6 +102,13 @@ export class AirportShuttleService {
               url: true,
             },
           },
+          airport_shuttle_price: {
+            select: {
+              id: true,
+              nama: true,
+              harga: true,
+            },
+          },
         },
       });
 
@@ -123,6 +133,7 @@ export class AirportShuttleService {
         include: {
           airport_shuttle_content: true,
           airport_shuttle_file: true,
+          airport_shuttle_price: true,
           lokasi: true,
         },
       });
@@ -144,7 +155,7 @@ export class AirportShuttleService {
     try {
       const existing = await this.prisma.airportShuttle.findUnique({
         where: { id },
-        include: { airport_shuttle_file: true, airport_shuttle_content: true },
+        include: { airport_shuttle_file: true, airport_shuttle_content: true, airport_shuttle_price: true },
       });
 
       if (!existing) throw new NotFoundException('Data not found');
@@ -201,6 +212,34 @@ export class AirportShuttleService {
         }
       }
 
+      if (dto.airport_shuttle_price) {
+        for (const price of dto.airport_shuttle_price) {
+          const existingPrice = await this.prisma.airportShuttlePrice.findFirst({
+            where: {
+              id: price.id,
+            },
+          });
+
+          if (existingPrice) {
+            await this.prisma.airportShuttlePrice.update({
+              where: { id: existingPrice.id },
+              data: {
+                nama: price.nama,
+                harga: price.harga,
+              },
+            });
+          } else {
+            await this.prisma.airportShuttlePrice.create({
+              data: {
+                airport_shuttle_id: id,
+                nama: price.nama,
+                harga: price.harga,
+              },
+            });
+          }
+        }
+      }
+
       const fileCreateData = files.length
         ? files.map((file) => ({
           nama_file: file.filename,
@@ -213,7 +252,6 @@ export class AirportShuttleService {
         data: {
           lokasi_id: dto.lokasi_id,
           nama: dto.nama,
-          harga: dto.harga,
           top_attraction: dto.top_attraction,
           is_popular: dto.is_popular,
           airport_shuttle_file: fileCreateData.length
@@ -243,4 +281,20 @@ export class AirportShuttleService {
     }
   }
 
+  async updatePopularStatus(updatePopularStatusDto: UpdatePopularStatusDto) {
+    const { id, is_popular } = updatePopularStatusDto;
+
+    const airportShuttle = await this.prisma.airportShuttle.findUnique({
+      where: { id },
+    });
+
+    if (!airportShuttle) {
+      throw new NotFoundException('Airport shuttle not found');
+    }
+
+    return this.prisma.airportShuttle.update({
+      where: { id },
+      data: { is_popular },
+    });
+  }
 }

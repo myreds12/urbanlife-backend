@@ -58,6 +58,8 @@ export class PemesananService {
         total_harga: item.harga,
         tanggal_mulai: item.tanggal_mulai ? new Date(item.tanggal_mulai) : undefined,
         tanggal_selesai: item.tanggal_selesai ? new Date(item.tanggal_selesai) : undefined,
+        airport_shuttle_id: item.airport_shuttle_id || undefined,
+        port_shuttle_id: item.port_shuttle_id || undefined,
       })) ?? [];
 
     // Step 2: Create Pemesanan
@@ -395,7 +397,7 @@ export class PemesananService {
       const skip = (Number(page) - 1) * Number(take);
 
       // Build bookedMap sama seperti sebelumnya
-      const bookedMap = new Map<'KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE' | 'AIRPORT' | 'PORT', number[]>();
+      const bookedMap = new Map<'KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE' | 'AIRPORT_SHUTTLE' | 'PORT_SHUTTLE', number[]>();
 
       if (is_order === true) {
         const todayStart = new Date();
@@ -412,7 +414,7 @@ export class PemesananService {
         });
 
         bookedItems.forEach(({ item_type, item_id }) => {
-          const key = item_type as 'KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE' | 'AIRPORT' | 'PORT';
+          const key = item_type as 'KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE' | 'AIRPORT_SHUTTLE' | 'PORT_SHUTTLE';
           if (!bookedMap.has(key)) bookedMap.set(key, []);
           bookedMap.get(key)?.push(item_id);
         });
@@ -426,7 +428,7 @@ export class PemesananService {
         });
 
         bookedItems.forEach(({ item_type, item_id }) => {
-          const key = item_type as 'KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE' | 'AIRPORT' | 'PORT';
+          const key = item_type as 'KENDARAAN' | 'AKOMODASI' | 'TRAVEL_PACKAGE' | 'AIRPORT_SHUTTLE' | 'PORT_SHUTTLE';
           if (!bookedMap.has(key)) bookedMap.set(key, []);
           bookedMap.get(key)?.push(item_id);
         });
@@ -612,14 +614,13 @@ export class PemesananService {
             return this.prismaService.airportShuttle.findMany({
               where: {
                 ...(top_attraction ? { top_attraction: true } : {}),
-                ...(bookedMap.has('AIRPORT')
-                  ? { id: { notIn: bookedMap.get('AIRPORT')! } }
+                ...(bookedMap.has('AIRPORT_SHUTTLE')
+                  ? { id: { notIn: bookedMap.get('AIRPORT_SHUTTLE')! } }
                   : {}),
               },
               select: {
                 id: true,
                 nama: true,
-                harga: true,
                 lokasi: {
                   select: {
                     id: true,
@@ -637,20 +638,26 @@ export class PemesananService {
                   },
                 },
                 airport_shuttle_file: { select: { id: true, nama_file: true, url: true } },
+                airport_shuttle_price: {
+                  select: {
+                    id: true,
+                    nama: true,
+                    harga: true,
+                  },
+                },
               },
             });
           case 'PORT_SHUTTLE':
             return this.prismaService.portShuttle.findMany({
               where: {
                 ...(top_attraction ? { top_attraction: true } : {}),
-                ...(bookedMap.has('PORT')
-                  ? { id: { notIn: bookedMap.get('PORT')! } }
+                ...(bookedMap.has('PORT_SHUTTLE')
+                  ? { id: { notIn: bookedMap.get('PORT_SHUTTLE')! } }
                   : {}),
               },
               select: {
                 id: true,
                 nama: true,
-                harga: true,
                 lokasi: {
                   select: {
                     id: true,
@@ -668,6 +675,13 @@ export class PemesananService {
                   },
                 },
                 port_shuttle_file: { select: { id: true, nama_file: true, url: true } },
+                port_shuttle_price: {
+                  select: {
+                    id: true,
+                    nama: true,
+                    harga: true,
+                  },
+                },
               },
             });
           default:
@@ -729,23 +743,23 @@ export class PemesananService {
       const airportShuttleItems = (dataByType[serviceTypes.indexOf('AIRPORT_SHUTTLE')] || []).map(air => ({
         id: air.id,
         nama: air.nama,
-        harga: Number(air.harga),
         item_type: 'AIRPORT_SHUTTLE',
         content: air.airport_shuttle_content,
         file_name: air.airport_shuttle_file?.[0]?.nama_file ?? '',
         file_url: air.airport_shuttle_file?.[0]?.url ?? '',
         lokasi: air.lokasi,
+        price: air.airport_shuttle_price,
       }));
 
       const portShuttleItems = (dataByType[serviceTypes.indexOf('PORT_SHUTTLE')] || []).map(air => ({
         id: air.id,
         nama: air.nama,
-        harga: Number(air.harga),
         item_type: 'PORT_SHUTTLE',
         content: air.port_shuttle_content,
         file_name: air.port_shuttle_file?.[0]?.nama_file ?? '',
         file_url: air.port_shuttle_file?.[0]?.url ?? '',
         lokasi: air.lokasi,
+        price: air.port_shuttle_price,
       }));
 
       // Gabungkan semua item

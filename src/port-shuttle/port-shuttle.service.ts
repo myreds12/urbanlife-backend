@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreatePortShuttleDto } from './dto/create-port-shuttle.dto';
+import { CreatePortShuttleDto, UpdatePopularStatusDto } from './dto/create-port-shuttle.dto';
 import { UpdatePortShuttleDto } from './dto/update-port-shuttle.dto';
 import { QueryParamsDto } from 'src/common/dto/query-params.dto';
 import * as fs from 'fs';
@@ -19,7 +19,6 @@ export class PortShuttleService {
         data: {
           lokasi_id: dto.lokasi_id,
           nama: dto.nama,
-          harga: dto.harga,
           top_attraction: dto.top_attraction,
           is_popular: dto.is_popular,
 
@@ -35,12 +34,16 @@ export class PortShuttleService {
               })),
             }
             : undefined,
+          port_shuttle_price: dto.port_shuttle_price
+            ? { create: dto.port_shuttle_price }
+            : undefined,
         },
 
         include: {
           port_shuttle_content: true,
           port_shuttle_file: true,
           lokasi: true,
+          port_shuttle_price: true,
         },
       });
     } catch (error) {
@@ -74,6 +77,7 @@ export class PortShuttleService {
           },
           port_shuttle_content: true,
           port_shuttle_file: true,
+          port_shuttle_price: true,
         },
       });
 
@@ -94,6 +98,7 @@ export class PortShuttleService {
           port_shuttle_content: true,
           port_shuttle_file: true,
           lokasi: true,
+          port_shuttle_price: true,
         },
       });
 
@@ -114,7 +119,7 @@ export class PortShuttleService {
     try {
       const existing = await this.prisma.portShuttle.findUnique({
         where: { id },
-        include: { port_shuttle_file: true, port_shuttle_content: true },
+        include: { port_shuttle_file: true, port_shuttle_content: true, port_shuttle_price: true },
       });
 
       if (!existing) throw new NotFoundException('Data not found');
@@ -169,6 +174,34 @@ export class PortShuttleService {
         }
       }
 
+      if (dto.port_shuttle_price) {
+        for (const price of dto.port_shuttle_price) {
+          const existingPrice = await this.prisma.portShuttlePrice.findFirst({
+            where: {
+              id: price.id,
+            },
+          });
+
+          if (existingPrice) {
+            await this.prisma.portShuttlePrice.update({
+              where: { id: existingPrice.id },
+              data: {
+                nama: price.nama,
+                harga: price.harga,
+              },
+            });
+          } else {
+            await this.prisma.portShuttlePrice.create({
+              data: {
+                port_shuttle_id: id,
+                nama: price.nama,
+                harga: price.harga,
+              },
+            });
+          }
+        }
+      }
+
       const fileCreateData = files.length
         ? files.map((file) => ({
           nama_file: file.filename,
@@ -181,7 +214,6 @@ export class PortShuttleService {
         data: {
           lokasi_id: dto.lokasi_id,
           nama: dto.nama,
-          harga: dto.harga,
           top_attraction: dto.top_attraction,
           is_popular: dto.is_popular,
 
@@ -194,6 +226,7 @@ export class PortShuttleService {
           port_shuttle_content: true,
           port_shuttle_file: true,
           lokasi: true,
+          port_shuttle_price: true,
         },
       });
     } catch (error) {
@@ -211,5 +244,22 @@ export class PortShuttleService {
       console.log(error)
       throw new InternalServerErrorException(error.message);
     }
+  }
+
+  async updatePopularStatus(updatePopularStatusDto: UpdatePopularStatusDto) {
+    const { id, is_popular } = updatePopularStatusDto;
+
+    const portShuttle = await this.prisma.portShuttle.findUnique({
+      where: { id },
+    });
+
+    if (!portShuttle) {
+      throw new NotFoundException('Airport shuttle not found');
+    }
+
+    return this.prisma.portShuttle.update({
+      where: { id },
+      data: { is_popular },
+    });
   }
 }

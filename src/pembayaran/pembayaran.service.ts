@@ -141,7 +141,11 @@ export class PembayaranService {
             ? 'akomodasi'
             : firstItem?.item_type === 'TRAVEL_PACKAGE'
               ? 'paket perjalanan'
-              : 'item';
+              : firstItem?.item_type === 'AIRPORT_SHUTTLE'
+                ? 'antar jemput bandara'
+                : firstItem?.item_type === 'PORT_SHUTTLE'
+                  ? 'antar jemput pelabuhan'
+                  : 'item';
 
       const itemName = firstItem?.detail?.nama || 'tidak diketahui';
 

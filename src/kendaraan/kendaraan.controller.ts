@@ -82,4 +82,10 @@ export class KendaraanController {
     };
     return this.kendaraanService.updatePopularStatus(updatedStatus);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('delete-kendaraan/:id')
+  deleteKendaraan(@Param('id') id: number) {
+    return this.kendaraanService.deleteKendaraan(id);
+  }
 }

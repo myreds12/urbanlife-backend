@@ -39,6 +39,18 @@ export class PemesananItemDto {
   @Min(0)
   room_id?: number;
 
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  airport_shuttle_id?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  port_shuttle_id?: number;
+
   @Type(() => Number)
   @IsNumber()
   @Min(0)

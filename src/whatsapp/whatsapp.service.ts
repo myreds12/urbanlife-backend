@@ -159,10 +159,11 @@ export class WhatsappService {
   }
 
   async logout(sessionId: string, user: { id: number }): Promise<{ message: string }> {
-    const client = this.clients.get(sessionId);
     const existing = await this.prismaService.adminWa.findFirst({
       where: { user_id: user.id },
     });
+    const sessId = existing.session
+    const client = this.clients.get(sessId);
 
     if (client) {
       try {
@@ -175,16 +176,16 @@ export class WhatsappService {
         await client.logout();
         await client.close();
       } catch (err) {
-        this.logger.warn(`⚠️ Gagal logout client ${sessionId}: ${err.message}`);
+        this.logger.warn(`⚠️ Gagal logout client ${sessId}: ${err.message}`);
       }
 
-      this.clients.delete(sessionId);
+      this.clients.delete(sessId);
     }
 
     // Update status adminWa jadi tidak aktif
     try {
       await this.prismaService.adminWa.updateMany({
-        where: { session: sessionId },
+        where: { session: sessId },
         data: { is_active: false },
       });
     } catch (err) {
@@ -192,16 +193,16 @@ export class WhatsappService {
     }
 
     // Hapus folder token
-    const sessionPath = path.join(process.cwd(), 'tokens', sessionId);
+    const sessionPath = path.join(process.cwd(), 'tokens');
     try {
       await fs.rm(sessionPath, { recursive: true, force: true });
-      this.logger.log(`🧹 Folder sesi ${sessionId} berhasil dihapus`);
+      this.logger.log(`🧹 Folder sesi ${sessId} berhasil dihapus`);
     } catch (err) {
-      this.logger.warn(`⚠️ Gagal hapus folder sesi ${sessionId}: ${err.message}`);
+      this.logger.warn(`⚠️ Gagal hapus folder sesi ${sessId}: ${err.message}`);
     }
 
     return {
-      message: `✅ Session ${sessionId} telah di-logout, folder token & status admin dinonaktifkan.`,
+      message: `✅ Session ${sessId} telah di-logout, folder token & status admin dinonaktifkan.`,
     };
   }
 

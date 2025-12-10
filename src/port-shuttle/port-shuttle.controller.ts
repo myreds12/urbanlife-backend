@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, UseInterceptors, UploadedFiles, Query } from '@nestjs/common';
 import { PortShuttleService } from './port-shuttle.service';
-import { CreatePortShuttleDto } from './dto/create-port-shuttle.dto';
+import { CreatePortShuttleDto, UpdatePopularStatusDto } from './dto/create-port-shuttle.dto';
 import { UpdatePortShuttleDto } from './dto/update-port-shuttle.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -45,5 +45,18 @@ export class PortShuttleController {
   @Delete()
   remove(@Body('ids') ids: number[]) {
     return this.portShuttleService.remove(ids);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('update-popular-status/:id')
+  async updatePopularStatus(
+    @Param('id') id: string,
+    @Body() updatePopularStatusDto: UpdatePopularStatusDto,
+  ) {
+      const updatedStatus = {
+      ...updatePopularStatusDto,
+      id: Number(id),
+    };
+    return this.portShuttleService.updatePopularStatus(updatedStatus);
   }
 }

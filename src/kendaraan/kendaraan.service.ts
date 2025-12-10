@@ -500,4 +500,17 @@ export class KendaraanService {
       data: { is_popular },
     });
   }
+
+  async deleteKendaraan(id: number) {
+    try {
+      await this.prismaService.kendaraan.delete({
+        where: { id: id },
+      })
+
+      return { message: `✅ ${id} kendaraan berhasil di hapus.` };
+    } catch (error) {
+      this.logger.error(`❌ Error saat menghapus kendaraan: ${error.message}`);
+      throw error;
+    }
+  }
 }
