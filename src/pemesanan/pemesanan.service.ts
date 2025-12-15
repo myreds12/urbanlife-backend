@@ -17,7 +17,7 @@ export class PemesananService {
     private readonly prismaService: PrismaService,
     private readonly notificationService: NotificationService,
     @InjectQueue('pemesanan-processing') private readonly pemesananQueue: Queue,
-  ) {}
+  ) { }
   private readonly logger = new Logger(PemesananService.name);
 
   async create(createPemesananDto: CreatePemesananDto) {
@@ -727,6 +727,7 @@ export class PemesananService {
         t => ({
           id: t.id,
           nama: t.nama,
+          harga: Number(t.harga_anak),
           harga_anak: Number(t.harga_anak),
           harga_dewasa: Number(t.harga_dewasa),
           durasi: t.durasi,
@@ -749,6 +750,7 @@ export class PemesananService {
         file_url: air.airport_shuttle_file?.[0]?.url ?? '',
         lokasi: air.lokasi,
         price: air.airport_shuttle_price,
+        harga: Number(air.airport_shuttle_price?.[0]?.harga),
       }));
 
       const portShuttleItems = (dataByType[serviceTypes.indexOf('PORT_SHUTTLE')] || []).map(air => ({
@@ -760,6 +762,7 @@ export class PemesananService {
         file_url: air.port_shuttle_file?.[0]?.url ?? '',
         lokasi: air.lokasi,
         price: air.port_shuttle_price,
+        harga: Number(air.port_shuttle_price?.[0]?.harga),
       }));
 
       // Gabungkan semua item
@@ -1276,7 +1279,7 @@ export class PemesananService {
   }
 
   async getFilters() {
-    const [kendaraanDurasi, akomodasiRoom, travelPackages] = await Promise.all([
+    const [kendaraanDurasi, akomodasiRoom, travelPackages, airportShuttle, portShuttle] = await Promise.all([
       this.prismaService.kendaraanDurasi.findMany({
         where: {
           kendaraan: {
@@ -1338,6 +1341,66 @@ export class PemesananService {
               negara: {
                 select: { id: true, nama: true },
               },
+            },
+          },
+        },
+      }),
+      this.prismaService.airportShuttle.findMany({
+        select: {
+          id: true,
+          nama: true,
+          lokasi: {
+            select: {
+              id: true,
+              nama: true,
+              alamat: true,
+              negara: { select: { id: true, nama: true, kode: true } },
+            },
+          },
+          airport_shuttle_content: {
+            select: {
+              id: true,
+              deskripsi: true,
+              bahasa: true,
+              kebijakan: true,
+            },
+          },
+          airport_shuttle_file: { select: { id: true, nama_file: true, url: true } },
+          airport_shuttle_price: {
+            select: {
+              id: true,
+              nama: true,
+              harga: true,
+            },
+          },
+        },
+      }),
+      this.prismaService.portShuttle.findMany({
+        select: {
+          id: true,
+          nama: true,
+          lokasi: {
+            select: {
+              id: true,
+              nama: true,
+              alamat: true,
+              negara: { select: { id: true, nama: true, kode: true } },
+            },
+          },
+          port_shuttle_content: {
+            select: {
+              id: true,
+              deskripsi: true,
+              bahasa: true,
+              kebijakan: true,
+            },
+          },
+          port_shuttle_file: { select: { id: true, nama_file: true, url: true } },
+          port_shuttle_price: {
+            select: {
+              id: true,
+              nama: true,
+              harga: true,
             },
           },
         },
@@ -1470,11 +1533,15 @@ export class PemesananService {
       akomodasiRoom.map(item => item.akomodasi?.id).filter(Boolean),
     );
     const uniqueTravelPackageIds = new Set(travelPackages.map(item => item.id).filter(Boolean));
+    const uniqueAirportShuttleIds = new Set(airportShuttle.map(item => item.id).filter(Boolean));
+    const uniquePortShuttleIds = new Set(portShuttle.map(item => item.id).filter(Boolean));
 
     const services = [
       { name: 'Rent car', count: uniqueKendaraanIds.size, type: 'KENDARAAN' },
       { name: 'Accommodation', count: uniqueAkomodasiIds.size, type: 'AKOMODASI' },
       { name: 'Day tour', count: uniqueTravelPackageIds.size, type: 'TRAVEL_PACKAGE' },
+      { name: 'Airport Shuttle', count: uniqueAirportShuttleIds.size, type: 'AIRPORT_SHUTTLE' },
+      { name: 'Port Shuttle', count: uniquePortShuttleIds.size, type: 'PORT_SHUTTLE' },
     ];
 
     const price = {
